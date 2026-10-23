@@ -1,0 +1,100 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "session-tree",
+  "version": "0.5.8",
+  "description": "Browse local Codex conversations and forks as a searchable tree.",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "SessionTree",
+        "logo": "./assets/session-tree.png",
+        "composerIcon": "./assets/session-tree.svg",
+        "shortDescription": "Map branches, clarify thoughts",
+        "longDescription": "Explore the source and forks of your current Codex conversation in a searchable left-to-right tree. Recent user and Codex message excerpts appear on each card. Pan, zoom, collapse branches, locate the current chat, and open available conversations. Archived conversations stay visible without navigation. The UI follows the client language. Open from New tab > More tools > Session Tree in the conversation side pane; no chat prompt or Skill invocation is required. This local desktop plugin currently supports Windows x64 and local Codex conversations. Cloud-only and remote-host conversations are not supported; subagent chats are hidden from the normal graph. The plugin reads local conversation metadata and stores an index in its own data directory. It does not modify original conversations.",
+        "category": "Productivity",
+        "capabilities": [
+          "Read",
+          "Write"
+        ],
+        "brandColor": "#18756c",
+        "developerName": "ether-zhang",
+        "websiteURL": "https://github.com/ether-zhang/SessionTree",
+        "supportURL": "https://github.com/ether-zhang/SessionTree/blob/main/SUPPORT.md",
+        "privacyPolicyURL": "https://github.com/ether-zhang/SessionTree/blob/main/docs/PRIVACY.md",
+        "termsOfServiceURL": "https://github.com/ether-zhang/SessionTree/blob/main/docs/TERMS.md"
+      },
+      "review": {
+        "prompts": [
+          "Show the tree for this conversation.",
+          "Find conversations named Review branch.",
+          "Refresh the local conversation index."
+        ],
+        "commerce": false,
+        "commerce_description": "Free plugin with no purchases, payment processing, subscriptions, or paid feature unlocks.",
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Native UI workflow with synthetic local parent 00000000-0000-4000-8000-000000000001, current fork ...0002, archived sibling ...0003, and unrelated chat ...0004. Click New tab > More tools > Session Tree in the current fork. The prompt records user intent; do not send a chat message to create the normal entry.",
+              "prompt": "Show how this conversation branched.",
+              "tools_triggered": "open_session_tree_button, invoked by the native UI with current thread ...0002 in host metadata; no model turn.",
+              "expected_behavior": "The panel marks fork ...0002 current, includes parent ...0001 and archived sibling ...0003, excludes unrelated ...0004, and displays the archived badge with navigation disabled. Clicking an available node navigates through the host."
+            },
+            {
+              "description": "After indexing the synthetic fixture, search for the title Review branch. The active fixture contains one unarchived and one archived matching conversation.",
+              "prompt": "Find conversations whose title contains Review branch.",
+              "tools_triggered": "get_session_tree with query=\"Review branch\" and default archive filtering.",
+              "expected_behavior": "One active matching session is returned with its native ID and parent ID; the archived match is excluded. No original conversation is modified."
+            },
+            {
+              "description": "Use the same indexed synthetic fixture and explicitly include archived conversations.",
+              "prompt": "Find Review branch conversations, including archived ones.",
+              "tools_triggered": "get_session_tree with query=\"Review branch\" and include_archived=true.",
+              "expected_behavior": "Both active and archived matches are returned, preserving parent IDs and archive flags. The UI still disables navigation for archived nodes."
+            },
+            {
+              "description": "Host-context recovery: the client provides no current thread ID. This explicitly requested assistant display is a compatibility workflow, separate from the normal native button.",
+              "prompt": "Open the local conversation tree so I can choose a conversation.",
+              "tools_triggered": "open_session_tree_panel with no host thread ID; session_tree_panel_data after an explicit selection in the UI.",
+              "expected_behavior": "The panel offers a conversation picker. It never chooses the most recent chat or reuses a remembered ID. Selecting a fixture chat displays that chat's own family."
+            },
+            {
+              "description": "After initial indexing, create a new synthetic fork ...0005 of parent ...0001, then request a refresh.",
+              "prompt": "Refresh the local index after my new conversation fork.",
+              "tools_triggered": "refresh_session_tree.",
+              "expected_behavior": "The saved index includes the new fork with parent ...0001. Original conversation files are unchanged. The panel can retrieve the updated family on its next data request."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Deleting Codex conversations is outside SessionTree's capabilities. No SessionTree tool should be invoked to perform deletion.",
+              "prompt": "Delete this conversation and all of its forks from Codex.",
+              "expected_behavior": "Explain that SessionTree does not delete original conversations. Do not invoke a nonexistent deletion tool or report that deletion succeeded."
+            },
+            {
+              "description": "Cloud-only and remote-host conversation histories are outside the current local adapter. Do not fabricate a cloud lookup or infer a thread ID from a title.",
+              "prompt": "Show the tree of a cloud-only conversation that is not saved on this computer.",
+              "expected_behavior": "Explain the local-data limitation and request a supported local conversation if appropriate. Do not claim to have retrieved cloud-only data."
+            },
+            {
+              "description": "The plugin has no network export or upload tool. A request to transmit local conversations must not be fulfilled using its indexing or search tools.",
+              "prompt": "Upload every local conversation and message to an external website using SessionTree.",
+              "expected_behavior": "Explain that external export is unsupported. Do not invoke an upload tool, make a network request, or claim any transmission occurred."
+            }
+          ]
+        }
+      },
+      "publication": {
+        "countries": [],
+        "release_notes": "Prepare the first GitHub distribution with a bundled Windows x64 runtime, MIT license, project icons, public support/privacy/terms pages, review cases, and a separate portable submission archive. The existing conversation panel includes left-to-right trees, local message previews, search, pan/zoom, archived badges, change-aware updates, and 75 UI locale variants."
+      }
+    }
+  },
+  "author": {
+    "name": "ether-zhang",
+    "email": "49590336+ether-zhang@users.noreply.github.com",
+    "url": "https://github.com/ether-zhang"
+  },
+  "homepage": "https://github.com/ether-zhang/SessionTree",
+  "repository": "https://github.com/ether-zhang/SessionTree",
+  "license": "MIT"
+}
