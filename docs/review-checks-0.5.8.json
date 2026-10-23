@@ -1,0 +1,53 @@
+{
+  "version": "0.5.8",
+  "checkedAt": "2026-10-23T13:52:59.930Z",
+  "syntheticOnly": true,
+  "originalConversationsUnchanged": true,
+  "realAccountSignIn": false,
+  "modelApiCalls": 0,
+  "scope": "Packaged MCP tool behavior and metadata only; not a native UI, model-prompt, or review approval result.",
+  "results": [
+    {
+      "case": "P1",
+      "mcpBehavior": "passed",
+      "nativeEntryAndNavigation": "not-run"
+    },
+    {
+      "case": "P2",
+      "mcpBehavior": "passed",
+      "modelPrompt": "not-run"
+    },
+    {
+      "case": "P3",
+      "mcpBehavior": "passed",
+      "archivedUiNavigation": "not-run",
+      "modelPrompt": "not-run"
+    },
+    {
+      "case": "P4",
+      "mcpBehavior": "passed",
+      "nativePicker": "not-run",
+      "modelPrompt": "not-run"
+    },
+    {
+      "case": "P5",
+      "mcpBehavior": "passed",
+      "modelPrompt": "not-run"
+    },
+    {
+      "case": "N1",
+      "status": "not-run",
+      "reason": "Agent refusal and tool selection need the intended host; no model API was called."
+    },
+    {
+      "case": "N2",
+      "status": "not-run",
+      "reason": "Agent refusal and tool selection need the intended host; no model API was called."
+    },
+    {
+      "case": "N3",
+      "status": "not-run",
+      "reason": "Agent refusal and tool selection need the intended host; no model API was called."
+    }
+  ]
+}

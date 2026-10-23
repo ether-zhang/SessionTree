@@ -1,0 +1,35 @@
+{
+  "checkedAt": "2026-10-23T13:58:23.481Z",
+  "anonymous": true,
+  "passed": true,
+  "results": [
+    {
+      "field": "websiteURL",
+      "url": "https://github.com/ether-zhang/SessionTree",
+      "status": 200,
+      "accessible": true,
+      "contentMarker": "A conversation map for Codex"
+    },
+    {
+      "field": "supportURL",
+      "url": "https://github.com/ether-zhang/SessionTree/blob/main/SUPPORT.md",
+      "status": 200,
+      "accessible": true,
+      "contentMarker": "Support is provided through this repository"
+    },
+    {
+      "field": "privacyPolicyURL",
+      "url": "https://github.com/ether-zhang/SessionTree/blob/main/docs/PRIVACY.md",
+      "status": 200,
+      "accessible": true,
+      "contentMarker": "SessionTree privacy information"
+    },
+    {
+      "field": "termsOfServiceURL",
+      "url": "https://github.com/ether-zhang/SessionTree/blob/main/docs/TERMS.md",
+      "status": 200,
+      "accessible": true,
+      "contentMarker": "SessionTree terms of use"
+    }
+  ]
+}

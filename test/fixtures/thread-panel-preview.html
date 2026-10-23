@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>会话树侧面板 · 示例预览</title>
+  <style>
+    :root { color-scheme:dark; font:14px/1.6 "Segoe UI","Microsoft YaHei",sans-serif; }
+    body { margin:0; background:#252631; color:#e8e8ef; }
+    header { padding:20px 26px; border-bottom:1px solid #ffffff12; }
+    h1 { font-size:18px; margin:0; } header p { color:#a6a8b9; font-size:12px; margin:3px 0 0; }
+    .layout { display:flex; height:calc(100vh - 92px); min-height:460px; } main { flex:1; min-width:0; padding:30px 26px; }
+    main p { max-width:540px; color:#b7bacb; font-size:13px; } h2 { font-size:17px; }
+    .controls { display:flex; flex-wrap:wrap; gap:8px; margin-top:24px; }
+    button { padding:7px 10px; border:1px solid #55596c; border-radius:6px; color:#d0c7fa; background:transparent; cursor:pointer; font:12px inherit; }
+    iframe { flex-shrink:0; width:380px; border:0; border-left:1px solid #ffffff17; background:#292a35; }
+    #route { overflow-wrap:anywhere; font:11px/1.8 Consolas,monospace; }
+    @media(max-width:700px) { main { padding:18px 12px; } header { padding:14px 16px; } .layout { height:calc(100vh - 88px); } }
+  </style>
+</head>
+<body>
+  <header><h1>会话树 · 对话内侧面板</h1><p>示例预览：模拟宿主接口，尚不代表 Codex 中的实际入口与跳转。</p></header>
+  <div class="layout">
+    <main><h2 id="title">为 Codex 添加对话树插件</h2><p>对话保持可见，右侧用从左到右的树图展示来源和分叉。点选节点通过宿主打开对话，不启动模型回合。</p>
+      <p>本预览只切换示例数据。当前高亮、搜索、分支收起、缺少对话标识时的手动选择，都使用实际面板组件。</p>
+      <div class="controls"><button id="narrow">280px 窄面板</button><button id="normal">380px 面板</button><button id="switch">模拟切换对话</button><button id="append">模拟新增分叉</button><button id="missing">模拟缺少对话标识</button><button id="delay">模拟延迟返回</button><button id="disconnect">模拟连接关闭</button><select id="locale" aria-label="模拟客户端语言"><option value="zh-CN">简体中文</option><option value="en-US">English</option><option value="ja-JP">日本語</option><option value="ar-SA">العربية</option></select></div>
+      <p id="route"></p><p id="calls">示例数据请求 0 次 · 模型请求 0 次</p>
+    </main>
+    <iframe id="panel" title="会话树面板"></iframe>
+  </div>
+  <script type="module">
+    import { createIndex } from '/tree.mjs';
+    import { panelSnapshot } from '/panel-model.mjs';
+    const ids = Array.from({ length: 7 }, (_, i) => `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`);
+    const excerpts = ['按三层结构组织，先做 Codex 接口。', '通用索引与适配层已分开。', '侧面板入口已能打开，接下来调整节点信息。', '隐藏子 agent，标题下面显示最近一条消息的摘要。', '其他 agent 后续复用树核心与索引。', '这里还没有分叉。', '子 agent 摘录应隐藏。'];
+    const record = (i, title, parent) => ({ id: `codex:${ids[i]}`, nativeId: ids[i], agent: 'codex', title, parentId: parent == null ? null : `codex:${ids[parent]}`, workspace: 'D:\\Project\\SessionTree', createdAt: '2026-10-15T00:00:00Z', openUrl: `codex://threads/${ids[i]}`, latestMessages: { user: i === 3 ? '标题下分别放用户和 Codex 两行摘要。' : `请继续完善${title}。`, assistant: excerpts[i] } });
+    let index = createIndex([record(0, '会话树方案'), record(1, '索引与三层结构', 0), { ...record(2, '侧栏原型', 1), archived: true }, record(3, '为 Codex 添加对话树插件', 1), record(4, '其他 Agent 接入', 0), record(5, '独立对话：没有分叉'), { ...record(6, '子 agent 测试节点（应隐藏）', 3), subagent: true, relation: 'spawn' }]);
+    const frame = document.getElementById('panel');
+    let current = ids[3], slow = false, disconnected = false, calls = 0, locale = 'zh-CN';
+    const snapshot = selected => {
+      const panel = panelSnapshot(index, current ? { threadId: current } : undefined, selected);
+      panel.revision = JSON.stringify([panel.nativeId, panel.index.nodes.map(node => [node.id, node.latestMessages])]);
+      return panel;
+    };
+    const notify = () => frame.contentWindow.postMessage({ jsonrpc: '2.0', method: 'ui/notifications/host-context-changed', params: { theme: 'dark', fixtureThreadId: current } }, location.origin);
+    const show = () => { document.getElementById('title').textContent = index.nodes.find(n => n.nativeId === current)?.title || '宿主没有提供当前对话 ID'; document.getElementById('route').textContent = current ? `示例上下文 / ${current}` : '当前上下文 / 未提供'; };
+    window.addEventListener('message', async event => {
+      if (event.source !== frame.contentWindow || event.data?.jsonrpc !== '2.0') return;
+      const request = event.data;
+      if (request.method === 'ui/notifications/initialized') {
+        event.source.postMessage({ jsonrpc: '2.0', method: 'ui/notifications/tool-result', params: { _meta: { sessionTreePanel: snapshot() } } }, location.origin);
+        return;
+      }
+      if (!request.id) return;
+      let result;
+      try {
+        if (request.method === 'ui/initialize') result = { protocolVersion: '2026-01-26', hostCapabilities: { openLinks: {} }, hostContext: { theme: 'dark', locale } };
+        else if (request.method === 'tools/call') {
+          calls++; document.getElementById('calls').textContent = `示例数据请求 ${calls} 次 · 模型请求 0 次`;
+          if (disconnected) throw new Error('Transport closed');
+          const data = snapshot(request.params.arguments?.current_thread_id);
+          if (slow) await new Promise(resolve => setTimeout(resolve, 1000));
+          result = request.params.arguments?.since_revision === data.revision ?
+            { _meta: { sessionTreeUnchanged: { revision: data.revision, nativeId: data.nativeId, mode: data.mode } } } :
+            { _meta: { sessionTreePanel: data } };
+        } else if (request.method === 'ui/open-link') {
+          const node = index.nodes.find(n => n.openUrl === request.params.url);
+          if (!node) throw new Error('Not a fixture conversation');
+          current = node.nativeId; show(); notify(); result = {};
+        } else throw new Error('Unsupported fixture request');
+        event.source.postMessage({ jsonrpc: '2.0', id: request.id, result }, location.origin);
+      } catch (error) { event.source.postMessage({ jsonrpc: '2.0', id: request.id, error: { code: -32000, message: error.message } }, location.origin); }
+    });
+    document.getElementById('narrow').onclick = () => { frame.style.width = '280px'; };
+    document.getElementById('normal').onclick = () => { frame.style.width = '380px'; };
+    document.getElementById('switch').onclick = () => { current = current === ids[5] ? ids[3] : ids[5]; show(); notify(); };
+    document.getElementById('append').onclick = () => {
+      const id = '00000000-0000-4000-8000-' + String(100 + index.nodes.length).padStart(12, '0');
+      index = createIndex([...index.nodes, { ...record(2, '自动刷新的新分叉', 3), id: 'codex:' + id, nativeId: id, openUrl: 'codex://threads/' + id }]);
+    };
+    document.getElementById('missing').onclick = () => { current = null; show(); notify(); };
+    document.getElementById('delay').onclick = () => { slow = !slow; document.getElementById('delay').textContent = slow ? '恢复即时返回' : '模拟延迟返回'; };
+    document.getElementById('disconnect').onclick = () => { disconnected = !disconnected; document.getElementById('disconnect').textContent = disconnected ? '恢复示例连接' : '模拟连接关闭'; };
+    document.getElementById('locale').onchange = event => {
+      locale = event.target.value;
+      frame.contentWindow.postMessage({ jsonrpc: '2.0', method: 'ui/notifications/host-context-changed', params: { locale } }, location.origin);
+    };
+    show();
+    // Install the mock host listener before the app sends its initialization request.
+    frame.src = '/panel.html';
+  </script>
+</body>
+</html>

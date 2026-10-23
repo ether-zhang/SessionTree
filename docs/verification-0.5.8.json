@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "version": "0.5.8",
+  "platform": "windows-x64",
+  "runtime": "v24.22.0",
+  "archiveSha256": "c080626049a50d3e3de69ae50d50eb8130549048ce64574e0504d3267ac15643",
+  "codexCli": "codex-cli 0.149.0",
+  "checkedAt": "2026-10-23T13:52:54.342Z",
+  "checks": [
+    "Package checksums match; no local conversations, caches, test Skills, or retired client experiments are included.",
+    "The distributable ZIP preserves the hidden marketplace catalog and all package files.",
+    "Codex clones a Git marketplace snapshot and installs/enables the bundled package with system Node removed from PATH.",
+    "The launcher resolved by Codex runs the verified bundled runtime with an empty PATH, including SQLite and Zstandard support.",
+    "The installed MCP serves the native conversation entry and UI, and reads a two-node tree from fixture SQLite and compressed logs.",
+    "Uninstall and marketplace removal succeed in the isolated Codex profile; the active installation is untouched."
+  ],
+  "scope": "Official Codex CLI and installed MCP launch; native desktop Install click and a remote hosted repository have not been exercised."
+}

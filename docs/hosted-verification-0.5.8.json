@@ -1,0 +1,12 @@
+{
+  "passed": false,
+  "status": "blocked",
+  "version": "0.5.8",
+  "repository": "https://github.com/ether-zhang/SessionTree",
+  "sourceUrl": "https://github.com/ether-zhang/SessionTree.git",
+  "ref": "marketplace",
+  "checkedAt": "2026-10-23T14:04:46.042Z",
+  "stage": "Git HTTPS clone",
+  "error": "schannel: failed to receive handshake, SSL/TLS connection failed",
+  "scope": "The remote source was not installed by this check. Local isolated marketplace installation, bundled-runtime launch, UI resource loading and synthetic MCP checks passed separately. No real Codex sign-in or model API call was performed."
+}

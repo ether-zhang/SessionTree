@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Session Tree</title>
+  <link rel="stylesheet" href="panel.css">
+  <script type="module" src="panel.mjs"></script>
+</head>
+<body>
+  <header class="panel-heading">
+    <span class="tree-icon" aria-hidden="true"><!-- session-tree-icon --></span>
+    <h1 id="heading">Session Tree</h1>
+    <label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Search chats" aria-label="Search chats" dir="auto"></label>
+    <button id="refresh" class="icon-button" title="Refresh" aria-label="Refresh">↻</button>
+  </header>
+  <div id="status" class="status" role="status" aria-live="polite" hidden></div>
+  <main>
+    <section id="picker" hidden>
+      <p id="picker-note" class="note"></p>
+      <p id="choice-count" class="caption"></p>
+      <div id="choices" class="choices" aria-label="Choose a chat"></div>
+    </section>
+    <section id="family" aria-label="Session Tree" hidden>
+      <div class="graph-toolbar">
+        <span id="count" class="caption"></span><button id="choose-again" class="caption choose-again" aria-label="Choose a chat" title="Choose a chat" hidden></button>
+        <div class="graph-actions">
+          <button id="zoom-out" title="Zoom −" aria-label="Zoom −">−</button><span id="zoom-value" dir="ltr">100%</span><button id="zoom-in" title="Zoom +" aria-label="Zoom +">＋</button>
+          <button id="fit" title="Fit all">Fit all</button><button id="locate" title="Locate">Locate</button>
+        </div>
+      </div>
+      <div id="viewport" class="viewport" tabindex="0" aria-label="Session Tree">
+        <div id="world" class="world"><svg id="edges" class="edges" aria-hidden="true"></svg><div id="tree" role="tree" aria-label="Session Tree"></div></div>
+      </div>
+      <p id="empty" class="note" hidden></p>
+    </section>
+  </main>
+</body>
+</html>
