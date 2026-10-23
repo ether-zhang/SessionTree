@@ -23,8 +23,10 @@ const productionFiles = [
   'src/cli.mjs', 'src/service.mjs',
   'src/core/tree.mjs', 'src/core/layout.mjs', 'src/core/store.mjs',
   'src/adapters/codex.mjs', 'src/adapters/codex-preview.mjs', 'src/adapters/codex-changes.mjs',
-  ...['mcp.mjs', 'resource.mjs', 'panel.mjs', 'panel.html', 'panel.css', 'panel-model.mjs',
+  ...['mcp.mjs', 'resource.mjs', 'panel.mjs', 'panel-model.mjs',
     'transport.mjs', 'conversation-view.mjs', 'i18n.mjs'].map(file => `src/ui/codex/${file}`),
+  ...['resource.mjs', 'panel.mjs', 'panel.html', 'panel.css', 'panel-model.mjs',
+    'conversation-view.mjs', 'i18n.mjs'].map(file => `src/ui/shared/${file}`),
 ];
 
 function contained(parent, path) {

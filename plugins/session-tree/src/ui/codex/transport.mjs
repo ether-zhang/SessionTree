@@ -1,3 +1,5 @@
+import { nativeThreadId, panelNodeUrl } from './panel-model.mjs';
+
 /** Host-managed MCP Apps transport; standalone HTTP is only a development harness. */
 export function dataLoadError(error) {
   return /Transport closed/i.test(error.message)
@@ -8,6 +10,14 @@ export function dataLoadError(error) {
 export class AppBridge {
   constructor(viewWindow, { timeoutMs = 15000, initialResultTimeoutMs = 300, displayModes = ['inline', 'fullscreen'] } = {}) {
     this.window = viewWindow;
+    this.locale = viewWindow.openai?.locale;
+    this.globalsListener = event => {
+      const locale = event.detail?.globals?.locale;
+      if (typeof locale !== 'string') return;
+      this.locale = locale;
+      for (const callback of this.notifications.get('ui/notifications/host-context-changed') || []) callback({ locale });
+    };
+    viewWindow.addEventListener('openai:set_globals', this.globalsListener);
     this.timeoutMs = timeoutMs;
     this.initialResultTimeoutMs = initialResultTimeoutMs;
     this.displayModes = displayModes;
@@ -39,6 +49,7 @@ export class AppBridge {
     this.on('ui/notifications/host-context-changed', () => this.discardOpeningResult());
   }
   on(method, callback) {
+    if (method === 'contextchange') method = 'ui/notifications/host-context-changed';
     if (!this.notifications.has(method)) this.notifications.set(method, new Set());
     this.notifications.get(method).add(callback);
     return () => this.notifications.get(method)?.delete(callback);
@@ -84,7 +95,11 @@ export class AppBridge {
     this.openingResult = undefined;
     this.cancelOpeningWait?.();
   }
-  async loadPanel({ refresh = false, currentThreadId, check = false } = {}) {
+  async loadPanel({ refresh = false, currentThreadId, selectedNodeId, check = false } = {}) {
+    if (selectedNodeId !== undefined) {
+      if (typeof selectedNodeId !== 'string' || !selectedNodeId.startsWith('codex:')) throw new Error('无效的 Codex 会话。');
+      currentThreadId = nativeThreadId(selectedNodeId.slice(6));
+    }
     await this.initialize();
     const args = { refresh };
     if (currentThreadId) args.current_thread_id = currentThreadId;
@@ -112,10 +127,18 @@ export class AppBridge {
     if (result?.isError) throw new Error(result.message || '客户端未能打开会话。');
     return result;
   }
+  canOpen(node) { return panelNodeUrl(node) !== null; }
+  openNode(node) {
+    const url = panelNodeUrl(node);
+    if (!url) throw new Error('无效的 Codex 会话链接。');
+    return this.openThread(url);
+  }
+  describeError(error) { return dataLoadError(error); }
   close() {
     this.closed = true;
     this.discardOpeningResult();
     this.window.removeEventListener('message', this.listener);
+    this.window.removeEventListener('openai:set_globals', this.globalsListener);
     for (const pending of this.pending.values()) { clearTimeout(pending.timer); pending.reject(new Error('会话树界面已关闭')); }
     this.pending.clear();
     this.notifications.clear();

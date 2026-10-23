@@ -23,3 +23,5 @@ From a source checkout, with Node.js 24+:
 Open the tree from the conversation's right-hand pane: **New tab → More tools → Session Tree**.
 
 [Development guide](docs/DEVELOPMENT.md) · [Support](SUPPORT.md) · [Privacy](docs/PRIVACY.md) · [MIT License](LICENSE)
+
+Hermes adaptation: [native Desktop plugin](docs/HERMES.md) · [three-layer architecture](docs/ARCHITECTURE.md). This experimental branch shares the tree core and renderer; the Codex release remains on `main` / `marketplace`.

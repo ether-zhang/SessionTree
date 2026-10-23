@@ -6,6 +6,7 @@
     "test": "node --test test/*.test.mjs",
     "index": "node plugins/session-tree/src/cli.mjs index",
     "build:release": "node scripts/build-release.mjs",
+    "build:hermes": "node scripts/build-hermes.mjs",
     "verify:release": "node scripts/verify-release.mjs",
     "build:submission": "node scripts/build-submission.mjs",
     "verify:review": "node scripts/verify-review.mjs"

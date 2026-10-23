@@ -1,4 +1,5 @@
-import { selectFamily, selectTree } from '../../core/tree.mjs';
+import { choosePanelNodes, treePanelRows } from '../shared/panel-model.mjs';
+import { selectFamily } from '../../core/tree.mjs';
 import { conversationIndex } from './conversation-view.mjs';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -26,26 +27,10 @@ export function panelSnapshot(index, meta, selectedThreadId) {
 
 /** Search retains ancestors; explicit selection is required when host context is absent. */
 export function panelChoices(index, query = '') {
-  const needle = query.trim().toLocaleLowerCase();
-  return index.nodes.filter(node => node.agent === 'codex' && !node.subagent && !node.missing && UUID.test(node.nativeId || '') &&
-    (!needle || [node.title, node.workspace, node.nativeId].join(' ').toLocaleLowerCase().includes(needle)))
-    .sort((a, b) => (b.updatedAt || b.createdAt || '').localeCompare(a.updatedAt || a.createdAt || '') || a.id.localeCompare(b.id));
+  return choosePanelNodes(index, query).filter(node => node.agent === 'codex' && UUID.test(node.nativeId));
 }
 
-export function panelRows(index, { query = '', collapsed = new Set() } = {}) {
-  const view = selectTree(conversationIndex(index), { query, archived: true });
-  const pending = [...view.roots].reverse().map(node => ({ node, depth: 0 })), rows = [], seen = new Set();
-  while (pending.length) {
-    const row = pending.pop();
-    if (seen.has(row.node.id)) continue;
-    seen.add(row.node.id);
-    const children = view.children.get(row.node.id) || [];
-    const folded = !query.trim() && collapsed.has(row.node.id);
-    rows.push({ ...row, hasChildren: children.length > 0, folded });
-    if (!folded) for (const node of [...children].reverse()) pending.push({ node, depth: row.depth + 1 });
-  }
-  return rows;
-}
+export const panelRows = treePanelRows;
 
 export function panelNodeUrl(node) {
   if (node?.agent !== 'codex' || node.missing || node.archived || !UUID.test(node.nativeId || '') || node.id !== `codex:${node.nativeId}`) return null;
