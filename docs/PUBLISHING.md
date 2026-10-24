@@ -6,7 +6,9 @@ Publisher handle: ether-zhang. License: MIT. The creator selected free distribut
 
 The source repository is [ether-zhang/SessionTree](https://github.com/ether-zhang/SessionTree). The branches are main for source and marketplace for the Windows x64 package with its runtime. A source push is separate from publishing to OpenAI's Plugin Directory.
 
-The marketplace installation command is:
+For normal installation, use the client's left-sidebar **Plugins** page and upper-right **Add** menu, then choose **Upload plugin archive** or **Add plugin marketplace** as shown in [the README](../README.md). The creator selected both GUI installation paths on 2026-10-24. GitHub Release v0.5.8 provides the single-plugin ZIP and SHA-256 file.
+
+The equivalent command-line alternative is:
 
 ~~~powershell
 codex plugin marketplace add ether-zhang/SessionTree --ref marketplace
