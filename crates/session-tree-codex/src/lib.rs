@@ -127,6 +127,7 @@ pub struct Metrics {
 }
 pub struct CodexAdapter {
     home: PathBuf,
+    home_alias: PathBuf,
     changes: ChangeTracker,
     cache: BTreeMap<PathBuf, Cached>,
     files: BTreeMap<PathBuf, bool>,
@@ -265,9 +266,14 @@ fn read_state(home: &Path) -> Result<Vec<Value>> {
 
 impl CodexAdapter {
     pub fn new(home: PathBuf) -> Self {
+        let home_alias = home.clone();
+        // FSEvents reports canonical paths, including /private/var for macOS temp roots.
+        #[cfg(unix)]
+        let home = fs::canonicalize(&home).unwrap_or(home);
         Self {
             changes: ChangeTracker::new(&home),
             home,
+            home_alias,
             cache: BTreeMap::new(),
             files: BTreeMap::new(),
             names: BTreeMap::new(),
@@ -340,13 +346,22 @@ impl CodexAdapter {
             }
         }
         for row in rows.values() {
-            let path = text(row, "rollout_path");
-            if !path.is_empty()
-                && !known.contains(&path_key(Path::new(path)))
-                && !known.contains(&path_key(Path::new(&format!("{path}.zst"))))
+            let value = text(row, "rollout_path");
+            if value.is_empty() {
+                continue;
+            }
+            let path = Path::new(value);
+            let path = path
+                .strip_prefix(&self.home_alias)
+                .map(|suffix| self.home.join(suffix))
+                .unwrap_or_else(|_| path.to_path_buf());
+            let mut compressed = path.as_os_str().to_os_string();
+            compressed.push(".zst");
+            if !known.contains(&path_key(&path))
+                && !known.contains(&path_key(Path::new(&compressed)))
             {
-                files.insert(PathBuf::from(path), truthy(&row["archived"]));
-                known.insert(path_key(Path::new(path)));
+                known.insert(path_key(&path));
+                files.insert(path, truthy(&row["archived"]));
             }
         }
         let mut records = BTreeMap::new();
@@ -606,7 +621,14 @@ mod tests {
         let metrics = adapter.metrics.clone();
         assert!(adapter.scan(false).unwrap().is_none());
         assert_eq!(adapter.metrics, metrics);
-        let first = adapter.cache.get(&path).unwrap().preview.clone().unwrap();
+        let cache_path = adapter.home.join("sessions/rollout-fixture.jsonl");
+        let first = adapter
+            .cache
+            .get(&cache_path)
+            .unwrap()
+            .preview
+            .clone()
+            .unwrap();
         let mut file = fs::OpenOptions::new().append(true).open(&path).unwrap();
         writeln!(file,"{}",json!({"type":"response_item","payload":{"type":"function_call_output","output":"x".repeat(9*1024*1024)}})).unwrap();
         write!(
