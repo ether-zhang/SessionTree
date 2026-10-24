@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   package:
+    if: ${{ !contains(github.event.head_commit.message, '[watch-debug]') }}
     strategy:
       fail-fast: false
       matrix:
@@ -65,3 +66,15 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
+
+
+  watch-debug:
+    if: ${{ contains(github.event.head_commit.message, '[watch-debug]') }}
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: rustup toolchain install 1.96.0 --profile minimal
+      - run: rustup override set 1.96.0
+      - name: Diagnose native macOS watcher
+        run: cargo test --locked -p session-tree-codex --lib tests::warm_checks_read_nothing_and_append_keeps_both_authors_and_partial_records -- --nocapture

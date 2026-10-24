@@ -659,7 +659,8 @@ mod tests {
             }
             assert!(
                 std::time::Instant::now() < deadline,
-                "File watcher did not detect the appended record."
+                "File watcher did not detect the appended record. {}",
+                adapter.changes.diagnostics()
             );
             std::thread::sleep(std::time::Duration::from_millis(25));
         }
