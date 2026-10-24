@@ -2,6 +2,10 @@
 
 Publisher handle: ether-zhang. License: MIT. The creator selected free distribution, no payments, and all countries supported by the destination directory.
 
+## Universal 0.6.0 preview
+
+The current source migrates the frontend to React + TypeScript + Vite and builds one ZIP with Windows x64 and both Mac runtimes. It is a candidate; the public stable release and marketplace remain on 0.5.8. The CI workflow builds once and checks that identical ZIP on all three targets without signing in or calling a model. Native desktop import/rendering must still be accepted before promoting it. See [development and rollback](DEVELOPMENT.md) for build outputs and checks.
+
 ## GitHub distribution
 
 The source repository is [ether-zhang/SessionTree](https://github.com/ether-zhang/SessionTree). The branches are main for source and marketplace for the Windows x64 package with its runtime. A source push is separate from publishing to OpenAI's Plugin Directory.

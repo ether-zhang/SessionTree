@@ -10,12 +10,11 @@ const assets = new Map([
   ['/panel-model.mjs', ['../plugins/session-tree/src/ui/codex/panel-model.mjs', 'text/javascript; charset=utf-8']],
   ['/conversation-view.mjs', ['../plugins/session-tree/src/ui/codex/conversation-view.mjs', 'text/javascript; charset=utf-8']],
 ]);
-const panel = await appResource(PANEL_URI);
 const server = createServer(async (request, response) => {
   if (request.method !== 'GET') { response.writeHead(405).end(); return; }
   try {
     if (request.url === '/panel.html') {
-      response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }).end(panel.text);
+      response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }).end((await appResource(PANEL_URI)).text);
       return;
     }
     const asset = assets.get(request.url);

@@ -44,7 +44,7 @@ test('an existing MCP connection still serves its UI after the old package direc
     child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n');
   });
   const init = await request('initialize', { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'upgrade-regression', version: '1' } });
-  assert.equal(init.serverInfo.version, '0.5.8');
+  assert.equal(init.serverInfo.version, '0.6.0');
   const before = await request('resources/read', { uri: PANEL_URI });
   await rename(packageRoot, retiredRoot);
   assert.deepEqual(await request('ping'), {});

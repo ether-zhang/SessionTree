@@ -1,0 +1,78 @@
+name: Universal plugin package
+
+on:
+  push:
+    branches: [main, codex/react-universal]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24.22.0
+          cache: npm
+      - run: npm ci
+      - run: npm run build:release
+      - name: Check host bridge and compiled resource
+        run: node --test --test-timeout=10000 test/bridge.test.mjs test/integration.test.mjs test/runtime.test.mjs
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: universal-plugin
+          path: |
+            dist/*-universal-plugin.zip
+            dist/*-universal-plugin.zip.sha256
+            dist/*-universal.metadata.json
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+  verify:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            target: win32-x64
+          - runner: macos-latest
+            target: darwin-arm64
+          - runner: macos-15-intel
+            target: darwin-x64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24.22.0
+          cache: npm
+      - run: npm ci
+      - run: npm install --global @openai/codex@0.149.0
+      - name: Select native Windows CLI executable
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $modules = npm root --global
+          $native = Get-ChildItem -LiteralPath (Join-Path $modules '@openai') -Recurse -Filter codex.exe |
+            Select-Object -First 1 -ExpandProperty FullName
+          if (-not $native) { throw 'Native Codex CLI executable was not installed.' }
+          "SESSION_TREE_VERIFY_CODEX=$native" >> $env:GITHUB_ENV
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          name: universal-plugin
+          path: dist
+      - name: Verify the same ZIP on this operating system
+        run: npm run verify:release
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: verification-${{ matrix.target }}
+          path: dist/*-universal.${{ matrix.target }}.verification.json
+          if-no-files-found: error
+          retention-days: 14

@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "session-tree",
-  "version": "0.5.8",
+  "version": "0.6.0",
   "description": "Browse local Codex conversations and forks as a searchable tree.",
   "extensions": {
     "com.openai": {
@@ -10,7 +10,7 @@
         "logo": "./assets/session-tree.png",
         "composerIcon": "./assets/session-tree.svg",
         "shortDescription": "Map branches, clarify thoughts",
-        "longDescription": "Explore the source and forks of your current Codex conversation in a searchable left-to-right tree. Recent user and Codex message excerpts appear on each card. Pan, zoom, collapse branches, locate the current chat, and open available conversations. Archived conversations stay visible without navigation. The UI follows the client language. Open from New tab > More tools > Session Tree in the conversation side pane; no chat prompt or Skill invocation is required. This local desktop plugin currently supports Windows x64 and local Codex conversations. Cloud-only and remote-host conversations are not supported; subagent chats are hidden from the normal graph. The plugin reads local conversation metadata and stores an index in its own data directory. It does not modify original conversations.",
+        "longDescription": "Explore the source and forks of your current Codex conversation in a searchable left-to-right tree. Recent user and Codex message excerpts appear on each card. Pan, zoom, collapse branches, locate the current chat, and open available conversations. Archived conversations stay visible without navigation. The UI follows the client language. Open from New tab > More tools > Session Tree in the conversation side pane; no chat prompt or Skill invocation is required. The universal package bundles runtimes for Windows x64, Apple Silicon Mac and Intel Mac. It reads local Codex conversations; cloud-only and remote-host conversations are not supported, and subagent chats are hidden from the normal graph. The plugin stores its index in its own data directory and does not modify original conversations.",
         "category": "Productivity",
         "capabilities": [
           "Read",
@@ -85,7 +85,7 @@
       },
       "publication": {
         "countries": [],
-        "release_notes": "Prepare the first GitHub distribution with a bundled Windows x64 runtime, MIT license, project icons, public support/privacy/terms pages, review cases, and a separate portable submission archive. The existing conversation panel includes left-to-right trees, local message previews, search, pan/zoom, archived badges, change-aware updates, and 75 UI locale variants."
+        "release_notes": "Migrate the existing conversation tree to React, TypeScript and Vite. Prepare one Windows x64 / Apple Silicon Mac / Intel Mac package with bundled runtimes and a shared launcher; native platform acceptance is tracked separately."
       }
     }
   },

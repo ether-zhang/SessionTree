@@ -1,8 +1,8 @@
-# SessionTree marketplace release preview
+# SessionTree Windows 0.5.8 release review
 
 This document covers the GitHub marketplace package and the scope of its validation. The source repository is [ether-zhang/SessionTree](https://github.com/ether-zhang/SessionTree). GitHub distribution is separate from official-directory submission; no public-directory submission has been made. The active development plugin is unchanged.
 
-The current candidate is 0.5.8. Its build and isolated installation check passed on 2026-10-23 using synthetic conversations without account sign-in or model API calls. Earlier local candidates are preserved separately.
+This document records stable 0.5.8. Its build and isolated installation check passed on 2026-10-23 using synthetic conversations without account sign-in or model API calls. The newer React/universal 0.6.0 candidate and its cross-platform verification are described in the [development guide](DEVELOPMENT.md). Earlier local candidates are preserved separately.
 
 ## Installation experience
 

@@ -8,9 +8,23 @@
     "build:release": "node scripts/build-release.mjs",
     "verify:release": "node scripts/verify-release.mjs",
     "build:submission": "node scripts/build-submission.mjs",
-    "verify:review": "node scripts/verify-review.mjs"
+    "verify:review": "node scripts/verify-review.mjs",
+    "build:ui": "tsc --noEmit && node scripts/build-ui.mjs",
+    "dev:ui": "vite",
+    "preview:ui": "node scripts/preview-thread-panel.mjs"
   },
   "engines": {
     "node": ">=24"
+  },
+  "dependencies": {
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "5.9.3",
+    "vite": "7.3.7",
+    "yazl": "3.3.1"
   }
 }

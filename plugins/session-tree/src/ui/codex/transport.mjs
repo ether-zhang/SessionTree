@@ -55,7 +55,7 @@ export class AppBridge {
   }
   initialize() {
     this.ready ??= this.request('ui/initialize', {
-      protocolVersion: '2026-01-26', appInfo: { name: 'SessionTree', version: '0.5.8' },
+      protocolVersion: '2026-01-26', appInfo: { name: 'SessionTree', version: '0.6.0' },
       appCapabilities: { availableDisplayModes: this.displayModes },
     }).then(context => {
       this.post({ method: 'ui/notifications/initialized' });

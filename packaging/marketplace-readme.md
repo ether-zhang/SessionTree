@@ -6,7 +6,7 @@ A conversation tree for Codex. Follow the origin and forks of a chat, see recent
 
 ## Install
 
-For Codex desktop on Windows x64. The package includes its runtime.
+The 0.6.0 universal preview contains runtimes for Windows x64, Apple Silicon Mac and Intel Mac in one ZIP. It requires no separately installed Node.js. Native desktop acceptance is still pending; the stable installation links below remain on Windows 0.5.8.
 
 Open **Plugins（插件）** in the **left sidebar**, then click **Add（添加）** in the **upper-right corner**. Choose either method below.
 
@@ -27,7 +27,7 @@ Open **Plugins（插件）** in the **left sidebar**, then click **Add（添加�
 | Git ref（Git 引用） | `marketplace` |
 | Sparse paths（稀疏路径） | Leave empty |
 
-3. Click **Add marketplace（添加市场）**, select the **SessionTree (Windows x64)** source, and click **Install（安装）** on SessionTree.
+3. Click **Add marketplace（添加市场）**, select the **SessionTree (Windows x64)** stable source, and click **Install（安装）** on SessionTree. A locally built universal preview uses the source name **SessionTree**.
 
 Use one installation method to avoid duplicate copies. Reopen the client if needed. Open the tree from a conversation's right-hand pane: **New tab → More tools → Session Tree**.
 

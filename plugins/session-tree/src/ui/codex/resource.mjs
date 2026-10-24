@@ -15,22 +15,13 @@ export function canonicalResourceUri(uri) {
   return legacy ? PANEL_URI : null;
 }
 
-/** Inline our small ESM modules so the native iframe needs no local web server. */
+/** Vite produces one self-contained document; installed plugins need no build server. */
 export async function appResource(uri = PANEL_URI) {
   const canonical = canonicalResourceUri(uri);
   if (!canonical) throw new Error('Unknown SessionTree resource.');
-  const page = 'panel';
-  const [html, css, ...modules] = await Promise.all([
-    readFile(new URL(`./${page}.html`, import.meta.url), 'utf8').then(html => html.replace('<!-- session-tree-icon -->', () => ICON_SVG)),
-    readFile(new URL(`./${page}.css`, import.meta.url), 'utf8'),
-    ...['../../core/tree.mjs', '../../core/layout.mjs', './i18n.mjs', './conversation-view.mjs', './panel-model.mjs', './transport.mjs', './panel.mjs']
-      .map(path => readFile(new URL(path, import.meta.url), 'utf8')),
-  ]);
-  const script = modules.map(code => code.replace(/^import .+;\r?$/gm, '').replace(/^export /gm, '')).join('\n');
   return {
     uri, mimeType: APP_MIME,
-    text: html.replace(`<link rel="stylesheet" href="${page}.css">`, () => `<style>${css}</style>`)
-      .replace(`<script type="module" src="${page}.mjs"></script>`, () => `<script type="module">${script.replace(/<\/script/gi, '<\\/script')}</script>`),
+    text: await readFile(new URL('../../../assets/panel.html', import.meta.url), 'utf8'),
     _meta: {
       ui: { prefersBorder: false, csp: { connectDomains: [], resourceDomains: [] } },
       'openai/ui': { availableDisplayModes: ['fullscreen'], preferredDisplayMode: 'fullscreen' },
