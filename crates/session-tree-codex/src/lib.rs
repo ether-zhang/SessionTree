@@ -655,6 +655,7 @@ mod tests {
         loop {
             if let Some((records, _)) = adapter.scan(false).unwrap() {
                 assert_eq!(records[0].extra["latestMessages"]["user"], "完整问题");
+                eprintln!("{}", adapter.changes.diagnostics());
                 break;
             }
             assert!(

@@ -72,10 +72,16 @@ async function main() {
     const command = (executable, args, options = {}) => run(executable, args, { cwd: work, env, ...options });
     const cli = args => JSON.parse(command(codex, args));
     command('git', ['init', '-b', 'main', repository]);
+    command('git', ['-C', repository, 'config', 'uploadpack.allowFilter', 'true']);
+    command('git', ['-C', repository, '-c', 'user.name=SessionTree packaging test', '-c', 'user.email=packaging-test@localhost', 'commit', '--allow-empty', '-m', 'Synthetic source branch without a catalog']);
+    const releaseRef = 'marketplace-' + platform.platform;
+    command('git', ['-C', repository, 'checkout', '-b', releaseRef]);
     command('git', ['-C', repository, 'add', '--all']);
     command('git', ['-C', repository, 'update-index', '--chmod=+x', 'plugins/session-tree/' + metadata.entry]);
     command('git', ['-C', repository, '-c', 'user.name=SessionTree packaging test', '-c', 'user.email=packaging-test@localhost', 'commit', '-m', 'Synthetic marketplace fixture']);
-    cli(['plugin', 'marketplace', 'add', 'https://session-tree.invalid/marketplace.git', '--ref', 'main', '--json']);
+    command('git', ['-C', repository, 'checkout', 'main']);
+    cli(['plugin', 'marketplace', 'add', 'https://session-tree.invalid/marketplace.git', '--ref', releaseRef,
+      '--sparse', '.agents/plugins', '--sparse', 'plugins/session-tree', '--json']);
     cli(['plugin', 'add', 'session-tree@session-tree', '--json']);
     const installed = cli(['plugin', 'list', '--json']).installed.find(plugin => plugin.pluginId === 'session-tree@session-tree');
     assert.equal(installed?.enabled, true); assert.equal(installed.version, source.version);
@@ -83,7 +89,7 @@ async function main() {
     for (const [file, expected] of Object.entries(metadata.files).filter(([file]) => file.startsWith('plugins/session-tree/'))) {
       assert.equal(await hash(join(installedRoot, file.slice('plugins/session-tree/'.length))), expected, 'Installed ' + file);
     }
-    checks.push('Codex installs the platform ZIP payload through an isolated Git marketplace with executable permissions preserved.');
+    checks.push('Codex installs the platform branch through sparse Git import, starting from a default branch without a catalog, with executable permissions preserved.');
     const servers = cli(['mcp', 'list', '--json']);
     const server = servers.find(server => server.transport?.command?.replaceAll('\\', '/').endsWith('/' + metadata.entry));
     assert.ok(server?.enabled, 'Codex did not resolve the native executable.');

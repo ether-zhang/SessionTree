@@ -97,6 +97,8 @@ Git installation uses precompiled release payloads. The planned release layout i
 
 These platform release branches are not published by building a candidate. The currently published marketplace branch and v0.5.8 release remain Windows-only. When the platform branches are published, users choose the matching Git ref once; Codex runs its prebuilt binary and does not compile the source or choose another architecture automatically. All platform branches keep the same plugin identity.
 
+For those platform refs, enter both **.agents/plugins** and **plugins/session-tree** in **Sparse paths**, one per line. The current importer performs a full Git clone when that field is empty; sparse import avoids fetching old runtime blobs and unrelated branch contents. The isolated release check exercises this layout, including a default branch without the marketplace catalog.
+
 For source development on Windows, build first, then run scripts/install.ps1. It backs up the previous development package. Restore that package with scripts/rollback.ps1. These helpers are separate from the cross-platform end-user ZIP installer.
 
 ## Use and rollback
