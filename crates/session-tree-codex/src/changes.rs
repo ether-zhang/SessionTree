@@ -32,6 +32,8 @@ pub struct ChangeTracker {
     watched: BTreeSet<PathBuf>,
     next_check: Instant,
     pending: Changes,
+    #[cfg(target_os = "macos")]
+    probe: crate::probe::MetadataProbe,
     #[cfg(test)]
     trace: Vec<String>,
 }
@@ -49,6 +51,8 @@ impl ChangeTracker {
             watched: BTreeSet::new(),
             next_check: Instant::now(),
             pending: Changes::default(),
+            #[cfg(target_os = "macos")]
+            probe: crate::probe::MetadataProbe::new(home),
             #[cfg(test)]
             trace: Vec::new(),
         }
@@ -78,10 +82,16 @@ impl ChangeTracker {
     pub fn retry(&mut self) {
         self.pending.full = true;
     }
+    #[cfg(target_os = "macos")]
+    pub fn observe(&mut self, files: impl IntoIterator<Item = (PathBuf, crate::Stamp)>) {
+        self.probe.observe(files);
+    }
     pub fn take(&mut self, force: bool) -> Option<Changes> {
         if !force {
             self.start();
         }
+        #[cfg(target_os = "macos")]
+        self.probe.take(&mut self.pending);
         while let Ok(event) = self.events.try_recv() {
             let Ok(event) = event else {
                 self.pending.full = true;

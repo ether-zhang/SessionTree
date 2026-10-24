@@ -75,7 +75,7 @@ The three layers remain separate:
 - **Agent adapter:** crates/session-tree-codex owns Codex files, SQLite metadata, previews and filesystem change tracking.
 - **Host UI:** frontend/codex owns the React panel; crates/session-tree serves the existing MCP protocol and embedded assets. Pure browser layout and localization modules remain independent of native storage.
 
-Commit generated panel.html and native-catalog.json with frontend/catalog changes. File events only invalidate caches. Visible panels retain their existing low-frequency revision checks; warm checks do not reread conversation bodies or rewrite the index.
+Commit generated panel.html and native-catalog.json with frontend/catalog changes. File events only invalidate caches. Visible panels retain their existing low-frequency revision checks; warm checks do not reread conversation bodies or rewrite the index. On macOS, those checks also compare metadata for the visible families, their directories, the name index and SQLite/WAL. This handles logs held open by Codex without watching every file or polling every conversation. Observed families expire when their panels stop requesting data.
 
 ## Install and Git distribution
 

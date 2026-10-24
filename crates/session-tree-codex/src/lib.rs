@@ -1,6 +1,8 @@
 //! Codex storage adapter: local files, SQLite metadata, bounded excerpts and change detection.
 mod changes;
 pub mod preview;
+#[cfg(any(target_os = "macos", test))]
+mod probe;
 use anyhow::{Result, bail};
 use changes::{ChangeTracker, Changes, path_key};
 use chrono::{DateTime, SecondsFormat, Utc};
@@ -265,6 +267,27 @@ fn read_state(home: &Path) -> Result<Vec<Value>> {
 }
 
 impl CodexAdapter {
+    pub fn observe(&mut self, native_ids: &[String]) {
+        #[cfg(target_os = "macos")]
+        {
+            let wanted: BTreeSet<_> = native_ids.iter().map(String::as_str).collect();
+            let files = self
+                .cache
+                .iter()
+                .filter(|(_, cached)| {
+                    cached
+                        .record
+                        .native_id
+                        .as_deref()
+                        .is_some_and(|id| wanted.contains(id))
+                })
+                .map(|(path, cached)| (path.clone(), cached.stamp.clone()))
+                .collect::<Vec<_>>();
+            self.changes.observe(files);
+        }
+        #[cfg(not(target_os = "macos"))]
+        let _ = native_ids;
+    }
     pub fn new(home: PathBuf) -> Self {
         let home_alias = home.clone();
         // FSEvents reports canonical paths, including /private/var for macOS temp roots.
@@ -618,6 +641,7 @@ mod tests {
         .unwrap();
         let mut adapter = CodexAdapter::new(directory.path().into());
         adapter.scan(false).unwrap();
+        adapter.observe(&[id.to_owned()]);
         let metrics = adapter.metrics.clone();
         assert!(adapter.scan(false).unwrap().is_none());
         assert_eq!(adapter.metrics, metrics);

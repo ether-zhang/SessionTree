@@ -47,6 +47,27 @@ struct Service {
     signature: Option<String>,
 }
 impl Service {
+    fn observe_index(&mut self, index: &Index) {
+        #[cfg(target_os = "macos")]
+        self.adapter.observe(
+            &index
+                .nodes
+                .iter()
+                .filter_map(|node| node.native_id.clone())
+                .collect::<Vec<_>>(),
+        );
+        #[cfg(not(target_os = "macos"))]
+        let _ = index;
+    }
+    fn observe_current(&mut self, native: Option<&str>) {
+        #[cfg(target_os = "macos")]
+        if let (Some(id), Some(index)) = (native, self.snapshot.as_ref()) {
+            let selected = family(&conversation_index(index), &key(id));
+            self.observe_index(&selected);
+        }
+        #[cfg(not(target_os = "macos"))]
+        let _ = native;
+    }
     fn refresh(&mut self, force: bool) -> Result<Index> {
         let scan = self.adapter.scan(force)?;
         if scan.is_none()
@@ -300,6 +321,11 @@ impl Server {
         ]
         .contains(&name)
         {
+            self.service.observe_current(
+                meta["threadId"]
+                    .as_str()
+                    .or_else(|| args["current_thread_id"].as_str()),
+            );
             let index = self.service.refresh(args["refresh"] == true)?;
             let panel = panel_snapshot(&index, meta, &args["current_thread_id"])?;
             if name == "session_tree_panel_data" && args["since_revision"] == panel["revision"] {
@@ -308,6 +334,7 @@ impl Server {
                 return Ok(result);
             }
             let selected: Index = serde_json::from_value(panel["index"].clone())?;
+            self.service.observe_index(&selected);
             let mut data = summary(&selected);
             data["currentThreadId"] = panel["nativeId"].clone();
             let message = if name == "open_session_tree_panel" {
