@@ -645,18 +645,8 @@ mod tests {
         let metrics = adapter.metrics.clone();
         // Filesystem hints may be duplicated; unchanged files must not be reread.
         adapter.scan(false).unwrap();
-        assert_eq!(
-            adapter.metrics.metadata_reads,
-            metrics.metadata_reads,
-            "{}",
-            adapter.changes.diagnostics()
-        );
-        assert_eq!(
-            adapter.metrics.body_reads,
-            metrics.body_reads,
-            "{}",
-            adapter.changes.diagnostics()
-        );
+        assert_eq!(adapter.metrics.metadata_reads, metrics.metadata_reads);
+        assert_eq!(adapter.metrics.body_reads, metrics.body_reads);
         let cache_path = adapter.home.join("sessions/rollout-fixture.jsonl");
         let first = adapter
             .cache
@@ -691,13 +681,11 @@ mod tests {
         loop {
             if let Some((records, _)) = adapter.scan(false).unwrap() {
                 assert_eq!(records[0].extra["latestMessages"]["user"], "完整问题");
-                eprintln!("{}", adapter.changes.diagnostics());
                 break;
             }
             assert!(
                 std::time::Instant::now() < deadline,
-                "File watcher did not detect the appended record. {}",
-                adapter.changes.diagnostics()
+                "Visible log metadata did not detect the appended record."
             );
             std::thread::sleep(std::time::Duration::from_millis(25));
         }

@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   package:
-    if: ${{ !contains(github.event.head_commit.message, '[watch-debug]') }}
     strategy:
       fail-fast: false
       matrix:
@@ -66,21 +65,3 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
-
-
-  watch-debug:
-    if: ${{ contains(github.event.head_commit.message, '[watch-debug]') }}
-    runs-on: macos-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7.0.1
-      - run: rustup toolchain install 1.96.0 --profile minimal
-      - run: rustup override set 1.96.0
-      - name: Diagnose native macOS watcher
-        run: |
-          for attempt in 1 2 3 4 5; do
-            cargo test --locked -p session-tree-codex --lib tests::warm_checks_skip_content_reads_and_append_keeps_authors -- --nocapture || exit $?
-          done
-
-      - name: Check macOS warm index and native service compilation
-        run: cargo test --locked -p session-tree --bin session-tree warm_refresh_preserves_the_index_file_and_skips_content_reads

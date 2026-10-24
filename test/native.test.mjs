@@ -33,30 +33,30 @@ test('native index preserves the existing adapter contract for SQLite/WAL, forks
   const db = new DatabaseSync(join(home, 'state_5.sqlite'));
   let adapter;
   try {
-  db.exec('PRAGMA journal_mode=WAL; CREATE TABLE threads(id TEXT, rollout_path TEXT, title TEXT, name TEXT, source TEXT, archived INTEGER, created_at INTEGER)');
-  const row = db.prepare('INSERT INTO threads VALUES (?, ?, ?, ?, ?, ?, ?)');
-  row.run(ids[0], root, 'DB root', null, 'vscode', 0, 1720000000);
-  row.run(ids[1], child.replace(/\.zst$/, ''), 'DB child', 'Explicit name wins', 'vscode', 1, 1720000001);
-  row.run(dbOnly, null, 'DB-only row', null, JSON.stringify({ subagent: { review: {} } }), 0, 1720000002);
-  adapter = new CodexAdapter(home);
-  const scan = await adapter.scan();
-  const expected = createIndex(scan.records, { issues: scan.issues });
-  const binary = process.env.SESSION_TREE_TEST_BACKEND || fileURLToPath(new URL('../target/release/session-tree' + (process.platform === 'win32' ? '.exe' : ''), import.meta.url));
-  const result = spawnSync(binary, ['index', '--codex-home', home, '--data-dir', dataDir], {
-    encoding: 'utf8', windowsHide: true, timeout: 10000, env: { ...process.env, PATH: '' },
-  });
-  assert.equal(result.error, undefined, result.error?.message);
-  assert.equal(result.status, 0, result.stderr);
-  const actual = JSON.parse(await readFile(join(dataDir, 'session-tree.index.json'), 'utf8'));
-  delete actual.generatedAt; delete expected.generatedAt;
-  // Node's Stat Date and Rust's nanosecond timestamp can round one millisecond apart.
-  for (const node of actual.nodes) {
-    const before = expected.nodes.find(item => item.id === node.id);
-    for (const field of ['createdAt', 'updatedAt']) if (node[field] && before[field]) {
-      assert.ok(Math.abs(Date.parse(node[field]) - Date.parse(before[field])) <= 1, node.id + '.' + field);
-      node[field] = before[field];
+    db.exec('PRAGMA journal_mode=WAL; CREATE TABLE threads(id TEXT, rollout_path TEXT, title TEXT, name TEXT, source TEXT, archived INTEGER, created_at INTEGER)');
+    const row = db.prepare('INSERT INTO threads VALUES (?, ?, ?, ?, ?, ?, ?)');
+    row.run(ids[0], root, 'DB root', null, 'vscode', 0, 1720000000);
+    row.run(ids[1], child.replace(/\.zst$/, ''), 'DB child', 'Explicit name wins', 'vscode', 1, 1720000001);
+    row.run(dbOnly, null, 'DB-only row', null, JSON.stringify({ subagent: { review: {} } }), 0, 1720000002);
+    adapter = new CodexAdapter(home);
+    const scan = await adapter.scan();
+    const expected = createIndex(scan.records, { issues: scan.issues });
+    const binary = process.env.SESSION_TREE_TEST_BACKEND || fileURLToPath(new URL('../target/release/session-tree' + (process.platform === 'win32' ? '.exe' : ''), import.meta.url));
+    const result = spawnSync(binary, ['index', '--codex-home', home, '--data-dir', dataDir], {
+      encoding: 'utf8', windowsHide: true, timeout: 10000, env: { ...process.env, PATH: '' },
+    });
+    assert.equal(result.error, undefined, result.error?.message);
+    assert.equal(result.status, 0, result.stderr);
+    const actual = JSON.parse(await readFile(join(dataDir, 'session-tree.index.json'), 'utf8'));
+    delete actual.generatedAt; delete expected.generatedAt;
+    // Node's Stat Date and Rust's nanosecond timestamp can round one millisecond apart.
+    for (const node of actual.nodes) {
+      const before = expected.nodes.find(item => item.id === node.id);
+      for (const field of ['createdAt', 'updatedAt']) if (node[field] && before[field]) {
+        assert.ok(Math.abs(Date.parse(node[field]) - Date.parse(before[field])) <= 1, node.id + '.' + field);
+        node[field] = before[field];
+      }
     }
-  }
-  assert.deepEqual(actual, expected);
+    assert.deepEqual(actual, expected);
   } finally { adapter?.close(); db.close(); }
 });

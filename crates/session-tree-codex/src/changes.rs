@@ -34,8 +34,6 @@ pub struct ChangeTracker {
     pending: Changes,
     #[cfg(target_os = "macos")]
     probe: crate::probe::MetadataProbe,
-    #[cfg(test)]
-    trace: Vec<String>,
 }
 impl ChangeTracker {
     pub fn new(home: &Path) -> Self {
@@ -53,8 +51,6 @@ impl ChangeTracker {
             pending: Changes::default(),
             #[cfg(target_os = "macos")]
             probe: crate::probe::MetadataProbe::new(home),
-            #[cfg(test)]
-            trace: Vec::new(),
         }
     }
     fn start(&mut self) {
@@ -72,8 +68,6 @@ impl ChangeTracker {
                     && path.is_dir()
                     && watcher.watch(&path, mode).is_ok()
                 {
-                    #[cfg(test)]
-                    self.trace.push(format!("watch {path:?} {mode:?}"));
                     self.watched.insert(path);
                 }
             }
@@ -100,8 +94,6 @@ impl ChangeTracker {
             if matches!(event.kind, EventKind::Access(_)) {
                 continue;
             }
-            #[cfg(test)]
-            self.trace.push(format!("event {event:?}"));
             if event.need_rescan() {
                 self.pending.full = true;
             }
@@ -124,8 +116,6 @@ impl ChangeTracker {
                         if self.watched.remove(&path)
                             && let Some(watcher) = &mut self.watcher
                         {
-                            #[cfg(test)]
-                            self.trace.push(format!("unwatch {path:?}"));
                             let _ = watcher.unwatch(&path);
                         }
                     }
@@ -165,20 +155,5 @@ impl ChangeTracker {
         } else {
             Some(std::mem::take(&mut self.pending))
         }
-    }
-    #[cfg(test)]
-    pub fn diagnostics(&self) -> String {
-        format!(
-            "home={:?} watched={:?}\n{}",
-            self.home,
-            self.watched,
-            self.trace
-                .iter()
-                .rev()
-                .take(32)
-                .cloned()
-                .collect::<Vec<_>>()
-                .join("\n")
-        )
     }
 }
