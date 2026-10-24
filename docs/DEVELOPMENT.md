@@ -4,128 +4,105 @@
 
 ## Build
 
-### Requirements
+Build on the target platform: Windows x64, Apple Silicon Mac, or Intel Mac. The build machine needs Node.js 24+, npm, Rust 1.96+, Cargo, and a C compiler (MSVC Build Tools on Windows or Xcode Command Line Tools on macOS). Dependencies are locked in package-lock.json and Cargo.lock. The first build downloads build dependencies; installed plugins download nothing.
 
-- Windows x64 or macOS, Node.js 24+, npm, and `tar` on the build machine.
-- Git and the Codex CLI with plugin commands for the isolated installation check.
-- Internet access for npm dependencies and the first download of the three pinned official Node.js runtimes; subsequent builds reuse the verified local cache.
-
-The frontend uses React, TypeScript and Vite. The build type-checks it and inlines the production JavaScript and CSS into one MCP App HTML resource. The generic tree/index layer and Codex adapter remain independent JavaScript modules. Installed plugins use no development server, CDN or runtime npm dependencies. End users do not need Node.js or npm.
-
-From the project root:
-
-```powershell
+~~~shell
 npm ci
 npm run build:release
-npm run verify:release
-```
+~~~
 
-For the current source version, output is written to:
+This type-checks and bundles the React frontend, compiles the Rust service, and builds two ZIP layouts for the current host. End users need neither Node.js nor Rust.
 
-- `dist/session-tree-0.6.0-universal-plugin.zip` — one plugin at the archive root, for the client's **Upload plugin archive** action.
-- `dist/session-tree-0.6.0-universal/` and `-marketplace.zip` — the custom marketplace directory and archive.
-- Adjacent `.zip.sha256` files and `.metadata.json` — archive checksums, runtime pins, and per-file fingerprints.
-- `dist/session-tree-0.6.0-universal.<platform>-<arch>.verification.json` — a report for the actual verification host, created only after it passes.
+| Host | Output prefix | Rust target |
+| --- | --- | --- |
+| Windows x64 | dist/session-tree-0.7.0-windows-x64 | x86_64-pc-windows-msvc |
+| Apple Silicon Mac | dist/session-tree-0.7.0-macos-arm64 | aarch64-apple-darwin |
+| Intel Mac | dist/session-tree-0.7.0-macos-x64 | x86_64-apple-darwin |
 
-The same ZIP contains Windows x64, macOS arm64 and macOS x64 runtimes. Its shared `./runtime/node` launcher resolves the adjacent official `node.exe` on Windows. On macOS it chooses the bundled archive for the current architecture, verifies it and expands it into the plugin data directory on first use; warm starts reuse that copy. No runtime download or global installation occurs. The ZIP preserves the Mac launcher's executable permission and remains below the client's 100 MiB bundle limit.
+For each prefix:
 
-The builder checks runtime SHA-256 hashes and includes Node.js and frontend licenses. It excludes local conversations, indexes, backups, account credentials, test Skills, and retired client experiments. The [SVG master](../plugins/session-tree/assets/session-tree.svg) and [transparent PNG](../plugins/session-tree/assets/session-tree.png) are shared by the plugin and panel.
+- The -plugin.zip archive contains exactly one plugin at its root, for **Upload plugin archive**.
+- The directory and -marketplace.zip contain the repository marketplace payload.
+- Adjacent .zip.sha256 and .metadata.json files record archive and per-file integrity.
+- A .verification.json report is created only after the isolated installation check passes.
 
-To intentionally rebuild an existing candidate of the same version:
+Each plugin contains one native binary, its manifests, icons, and licenses. The React HTML and MCP catalog are embedded in the binary; no Node runtime, source tree, Cargo target directory, or node_modules are shipped. SQLite and Zstandard are linked into the binary. The Windows build links its C runtime statically, and ZIPs preserve the macOS executable permission.
 
-```powershell
+To intentionally replace a candidate of the same version, use:
+
+~~~shell
 npm run build:release -- --replace
-```
+~~~
 
-Verification extracts the primary plugin ZIP, uses a temporary Git marketplace and isolated Codex data directory, and starts the bundled runtime with system Node removed from PATH. It does not sign in to a real account, call a model API, or change the active plugin installation. It checks file integrity, permissions, marketplace installation, cold/warm startup, the React resource, SQLite/plain/Zstandard indexing, and uninstall. The [CI workflow](../.github/workflows/universal-package.yml) builds once and verifies the exact same ZIP on Windows x64 and both Mac architectures. Native desktop import and rendering remain separate acceptance checks.
+## Verify
 
-### Develop with simulated conversations
+~~~shell
+cargo test --workspace --locked
+npm run test:native
+npm run verify:release
+~~~
 
-For the frontend development server, run `npm run dev:ui` and open `http://127.0.0.1:5173/__preview`. Vite reloads frontend changes in the simulated host. To inspect the exact production document, first run `npm run build:ui`, then:
+The native checks reuse the existing protocol tests and compare the Rust index with the JavaScript reference adapter. Fixtures cover SQLite/WAL, plain and compressed conversations, canonical fork metadata, archives, subagents, missing ancestors, attachment/selection text, bounded append reads, and warm checks with no additional reads. The old JavaScript backend is retained as a migration reference and is excluded from distribution.
 
-```powershell
+The release check uses a temporary Git marketplace and isolated Codex home. It checks ZIP hashes and executable permissions, installs the package, launches the resolved binary without Node/Rust on PATH, checks native library dependencies, reads a synthetic conversation tree and embedded UI, then uninstalls it. It never signs in, calls a model API, or changes the active plugin installation.
+
+The [native package workflow](../.github/workflows/native-package.yml) builds and verifies each platform on its own runner. Its reports cover CLI/MCP behavior and actual binary execution; native desktop import, rendering and UI placement remain separate acceptance checks.
+
+## Develop the panel
+
+For frontend hot reload:
+
+~~~shell
+npm run dev:ui
+~~~
+
+Open http://127.0.0.1:5173/__preview to use the simulated host. For the exact production HTML, run:
+
+~~~shell
+npm run build:ui
 npm run preview:ui
-```
+~~~
 
-Open the localhost URL printed by the command. The fixture uses the production panel with simulated host messages and synthetic conversations. Its controls exercise switching chats, new forks, delayed replies, and disconnected transport. Enter `q` in the terminal to stop it. This is a panel development fixture; it does not demonstrate a modified Codex desktop client.
+Open the printed localhost URL. Synthetic controls exercise conversation switching, new forks, locale changes, delayed replies and disconnection. Enter q in the terminal to stop the fixture. Rebuild the Rust backend after production frontend changes so it embeds the new document:
 
-The architecture keeps three layers: `plugins/session-tree/src/core/` owns reusable tree/index logic, `src/adapters/` reads agent data, and `frontend/codex/` owns the Codex React UI. `src/ui/codex/` provides the existing host bridge, locale catalog and MCP resources. Commit the generated `assets/panel.html` with frontend changes so source installations can start without a compiler. See [the release review](release-review.md) and [roadmap](ROADMAP.md).
+~~~shell
+npm run build:backend
+~~~
 
-## Install
+The three layers remain separate:
 
-### Packaged custom marketplace
+- **Generic tree/index:** crates/session-tree-core owns records, ancestry, missing parents and cycle repair.
+- **Agent adapter:** crates/session-tree-codex owns Codex files, SQLite metadata, previews and filesystem change tracking.
+- **Host UI:** frontend/codex owns the React panel; crates/session-tree serves the existing MCP protocol and embedded assets. Pure browser layout and localization modules remain independent of native storage.
 
-After building, register the generated marketplace directory once:
+Commit generated panel.html and native-catalog.json with frontend/catalog changes. File events only invalidate caches. Visible panels retain their existing low-frequency revision checks; warm checks do not reread conversation bodies or rewrite the index.
 
-```powershell
-codex plugin marketplace add ./dist/session-tree-0.6.0-universal
-```
+## Install and Git distribution
 
-Then:
+For a locally built preview, use **Plugins → Add → Upload plugin archive** and select the matching platform's -plugin.zip without unpacking it.
 
-1. Open **Plugins** in Codex and select **SessionTree** as the source.
-2. Find **SessionTree** and click **Install (+)**.
-3. Fully quit and reopen Codex if the new tool is not visible.
+Alternatively, unpack the -marketplace.zip and add its marketplace root as a local source in **Plugins → Add → Add plugin marketplace**. Then select **SessionTree (your platform)** and click **Install**. The CLI equivalent on Windows is:
 
-Disable an existing `session-tree@session-tree-local` development copy before enabling the packaged copy, to avoid duplicate tools. The package includes Node.js; installation does not install a global runtime or download code on first use.
+~~~shell
+codex plugin marketplace add ./dist/session-tree-0.7.0-windows-x64
+~~~
 
-The public source is [ether-zhang/SessionTree](https://github.com/ether-zhang/SessionTree). The `main` branch contains source; the `marketplace` branch contains the Windows x64 package and bundled runtime. To install the packaged build directly, add it with:
+Git installation uses precompiled release payloads. The planned release layout is:
 
-```powershell
-codex plugin marketplace add ether-zhang/SessionTree --ref marketplace
-```
+| Device | Source | Git ref |
+| --- | --- | --- |
+| Windows x64 | ether-zhang/SessionTree | marketplace-windows-x64 |
+| Apple Silicon Mac | ether-zhang/SessionTree | marketplace-macos-arm64 |
+| Intel Mac | ether-zhang/SessionTree | marketplace-macos-x64 |
 
-Then follow the same native installation steps. If Git HTTPS cannot connect, download the [marketplace branch ZIP](https://github.com/ether-zhang/SessionTree/archive/refs/heads/marketplace.zip), unpack it, and add the unpacked marketplace folder as a local source as shown above. [Official marketplace setup](https://developers.openai.com/plugins/build/plugins#add-a-marketplace-from-the-cli)
+These platform release branches are not published by building a candidate. The currently published marketplace branch and v0.5.8 release remain Windows-only. When the platform branches are published, users choose the matching Git ref once; Codex runs its prebuilt binary and does not compile the source or choose another architecture automatically. All platform branches keep the same plugin identity.
 
-A custom repository marketplace is separate from the official Plugin Directory. Local MCP submission to that directory currently requires approved-partner access. [Desktop-only submission requirements](https://developers.openai.com/plugins/deploy/desktop-only)
+For source development on Windows, build first, then run scripts/install.ps1. It backs up the previous development package. Restore that package with scripts/rollback.ps1. These helpers are separate from the cross-platform end-user ZIP installer.
 
-### Install from source for development
+## Use and rollback
 
-This option uses Node.js 24+ from the developer's machine:
+Open an existing conversation's right pane: **New tab → More tools → Session Tree**. The entry follows the client language. Each conversation opens its own family. Search, pan, zoom, fit, locate and branch collapse retain their existing behavior. Archived chats remain visible and cannot be opened. A conversation picker appears when host context is unavailable. This refactor does not add a shallower shortcut.
 
-Run `npm ci` and `npm run build:ui` first. On Windows, `./scripts/install.ps1` registers the development source; it is a development helper, not the cross-platform end-user installer. On macOS, build the universal ZIP and import it through **Plugins → Add → Upload plugin archive**.
+Keep the previous working ZIP. To roll back an imported preview, uninstall it and import the previous ZIP; restart the client if it retains an old MCP connection. The plugin does not modify original conversations or Codex installation files. Its plugin-owned index remains compatible with the previous format.
 
-The Windows helper registers the local development marketplace, backs up any previous installed package, and installs the source plugin. Fully quit and reopen Codex to load the change. Restore the previous installed development package with:
-
-```powershell
-.\scripts\rollback.ps1
-```
-
-Rollback restores the development plugin package; it preserves conversation data and the index and does not revert workspace source files. For a GUI-imported preview, uninstall it and import the previous stable ZIP. The universal package does not modify Codex client files.
-
-### Remove the packaged copy
-
-Uninstall **session-tree@session-tree** in the Plugins directory, then remove its marketplace source. CLI equivalents:
-
-```powershell
-codex plugin remove session-tree@session-tree
-codex plugin marketplace remove session-tree
-```
-
-If you kept a development copy, re-enable it. Restart Codex if it still holds the previous MCP connection.
-
-## Use
-
-1. Open an existing Codex conversation.
-2. In the right-hand pane, select **New tab → More tools → Session Tree**. The entry name follows the client language.
-3. Explore the current conversation's tree. Click an available node to open its conversation.
-
-Each conversation opens its own tree. Normal use starts from the UI and requires no chat prompt or Skill invocation. A shallower conversation entry remains planned.
-
-| Control | Action |
-| --- | --- |
-| Search | Find matching conversations while keeping their ancestry visible. |
-| Drag empty space | Pan the tree. |
-| Ctrl/⌘ + wheel, or − / + | Zoom. |
-| Fit all | Show the complete tree. |
-| Locate | Center the current chat and reveal its ancestry. |
-| Branch − / + | Collapse or expand a branch. |
-| Archived node | Remain visible with an archive badge; navigation is disabled. |
-
-Updates preserve your search, collapsed branches, and view. When Codex cannot identify the active conversation, the panel offers a conversation picker.
-
-SessionTree reads local conversation files and metadata and keeps its index in the plugin's own data directory. It does not modify original conversations or Codex client installation files, or send conversation content to external storage or translation services.
-
-Cloud-only and remote-host conversations are not supported yet; subagent conversations are hidden. Conversation titles and messages keep their original language; unknown UI languages fall back to English. The universal candidate targets Windows x64, Apple Silicon Mac and Intel Mac. Platform reports describe runtime/MCP checks; they do not establish native desktop UI acceptance.
-
-SessionTree is free software under the [MIT License](../LICENSE), maintained by [ether-zhang](https://github.com/ether-zhang). See [support](../SUPPORT.md), [privacy information](PRIVACY.md), [terms](TERMS.md), and [publication status](PUBLISHING.md).
+Cloud-only and remote-host chats remain unsupported; subagents are hidden from the normal graph. Titles and messages retain their original language. See [support](../SUPPORT.md), [privacy](PRIVACY.md), [MIT License](../LICENSE), and [publication status](PUBLISHING.md).

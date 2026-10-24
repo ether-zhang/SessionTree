@@ -1,6 +1,8 @@
 .session-tree/
 *.log
 node_modules/
+target/
+plugins/session-tree/bin/
 dist/
 .agents/
 .codex/

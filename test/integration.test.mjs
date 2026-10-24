@@ -13,7 +13,8 @@ async function exchange(t, calls, { home, dataDir, cwd, locale } = {}) {
   const args = [fileURLToPath(new URL('../plugins/session-tree/src/ui/codex/mcp.mjs', import.meta.url))];
   if (home) args.push('--codex-home', home);
   if (dataDir) args.push('--data-dir', dataDir);
-  const child = spawn(process.execPath, args, { cwd, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+  const native = process.env.SESSION_TREE_TEST_BACKEND;
+  const child = spawn(native || process.execPath, native ? args.slice(1) : args, { cwd, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
   const closed = once(child, 'close');
   t.after(async () => { if (child.exitCode === null) child.kill(); await closed; });
   let stdout = '', stderr = '';

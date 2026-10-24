@@ -1,0 +1,15 @@
+[package]
+name = "session-tree"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+session-tree-core = { path = "../session-tree-core" }
+session-tree-codex = { path = "../session-tree-codex" }
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+tempfile.workspace = true
+base64 = "0.22"

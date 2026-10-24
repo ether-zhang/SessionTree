@@ -2,9 +2,11 @@
 
 Publisher handle: ether-zhang. License: MIT. The creator selected free distribution, no payments, and all countries supported by the destination directory.
 
-## Universal 0.6.0 preview
+## Native 0.7.0 preview
 
-The current source migrates the frontend to React + TypeScript + Vite and builds one ZIP with Windows x64 and both Mac runtimes. It is a candidate; the public stable release and marketplace remain on 0.5.8. The CI workflow builds once and checks that identical ZIP on all three targets without signing in or calling a model. Native desktop import/rendering must still be accepted before promoting it. See [development and rollback](DEVELOPMENT.md) for build outputs and checks.
+The `codex/rust-backend` branch retains the React frontend and replaces the Node service with Rust. CI builds and verifies separate Windows x64, Apple Silicon Mac and Intel Mac packages. Each contains one native program, icons, manifests and licenses; no Node runtime, source tree or development dependencies are shipped. The public stable release and marketplace remain on 0.5.8. Native desktop import/rendering must still be accepted before promotion. See [development and rollback](DEVELOPMENT.md).
+
+For future Git distribution, copy each generated marketplace payload to its platform branch (`marketplace-windows-x64`, `marketplace-macos-arm64`, or `marketplace-macos-x64`). Users add `ether-zhang/SessionTree` and select that Git ref; all branches retain the same plugin identity. These release branches are planned, not published by building a candidate. Git installation runs precompiled files and does not invoke Cargo. ZIP import uses the corresponding platform's `-plugin.zip`.
 
 ## GitHub distribution
 

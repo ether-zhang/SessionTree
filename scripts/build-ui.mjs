@@ -35,3 +35,4 @@ for (const name of ['react', 'react-dom', 'scheduler']) {
 }
 await writeFile(join(root, 'plugins/session-tree/assets/frontend-licenses.txt'), notices.join('\n\n---\n\n'));
 console.log('Self-contained React panel: ' + Buffer.byteLength(html) + ' bytes; no runtime npm dependencies or external UI requests.');
+await import('./sync-native-assets.mjs');

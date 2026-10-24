@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { zipDirectory } from './lib/archive.mjs';
+import { hostTarget } from './lib/platform.mjs';
 import { createHash } from 'node:crypto';
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
@@ -8,7 +9,8 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const source = JSON.parse(await readFile(join(root, 'plugins/session-tree/plugin.json'), 'utf8'));
-const marketplace = join(root, 'dist', 'session-tree-' + source.version + '-universal');
+const target = hostTarget();
+const marketplace = join(root, 'dist', 'session-tree-' + source.version + '-' + target.platform);
 const output = marketplace + '-submission-draft';
 const archive = output + '.zip';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -42,7 +44,7 @@ async function main() {
   assert.equal(process.argv.length, 2, 'Usage: node scripts/build-submission.mjs');
   const verified = await json(marketplace + '.verification.json');
   assert.equal(verified.passed, true);
-  assert.equal(verified.archiveSha256, hash(await readFile(marketplace + '-plugin.zip')), 'Verify the current universal archive first');
+  assert.equal(verified.archiveSha256, hash(await readFile(marketplace + '-plugin.zip')), 'Verify the current platform archive first');
   await mkdir(output); // Never overwrite an earlier submission draft.
   await cp(join(marketplace, 'plugins/session-tree'), output, { recursive: true });
   const manifest = await json(join(output, 'plugin.json'));
@@ -71,7 +73,7 @@ async function main() {
   assert.deepEqual(extension.publication.countries, []);
   const mcp = await json(join(output, 'mcp.json'));
   assert.equal(mcp.mcpServers['session-tree'].type, 'stdio');
-  assert.equal(mcp.mcpServers['session-tree'].command, './runtime/node');
+  assert.equal(mcp.mcpServers['session-tree'].command, './bin/' + target.binary);
   for (const field of ['logo', 'composerIcon']) {
     const bytes = await readFile(inside(output, join(output, extension.interface[field])));
     assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
@@ -83,7 +85,7 @@ async function main() {
   const files = await inventory(output);
   assert.ok(!Object.keys(files).some(path => /(^|\/)(\.app\.json|\.agents|skills|auth\.json|\.session-tree|client-integration)(\/|$)/.test(path)));
   assert.ok(!manifest.apps && !extension.apps);
-  await zipDirectory(output, archive, { executablePaths: ['runtime/node', 'runtime/node.exe'] });
+  await zipDirectory(output, archive, { executablePaths: ['bin/' + target.binary] });
   const workRoot = join(root, '.session-tree', 'submission-verification');
   await mkdir(workRoot, { recursive: true });
   const extracted = await mkdtemp(join(workRoot, 'archive-'));

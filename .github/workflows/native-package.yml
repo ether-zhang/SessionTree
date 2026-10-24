@@ -1,0 +1,67 @@
+name: Native plugin packages
+
+on:
+  push:
+    branches: [main, codex/rust-backend]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            platform: windows-x64
+          - runner: macos-latest
+            platform: macos-arm64
+          - runner: macos-15-intel
+            platform: macos-x64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24.22.0
+          cache: npm
+      - run: rustup toolchain install 1.96.0 --profile minimal --component rustfmt --component clippy
+      - run: rustup override set 1.96.0
+      - run: npm ci
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --locked -- -D warnings
+      - run: npm run build:release
+      - name: Check incremental reads and ancestry
+        run: cargo test --workspace --locked
+      - name: Check native protocol and reference adapter parity
+        run: npm run test:native
+      - name: Check existing host bridge
+        run: node --test --test-timeout=10000 test/bridge.test.mjs
+      - run: npm install --global @openai/codex@0.149.0
+      - name: Select native Windows CLI executable
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $modules = npm root --global
+          $native = Get-ChildItem -LiteralPath (Join-Path $modules '@openai') -Recurse -Filter codex.exe |
+            Select-Object -First 1 -ExpandProperty FullName
+          if (-not $native) { throw 'Native Codex CLI executable was not installed.' }
+          "SESSION_TREE_VERIFY_CODEX=$native" >> $env:GITHUB_ENV
+      - name: Verify native package in an isolated Codex profile
+        run: npm run verify:release
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: session-tree-${{ matrix.platform }}
+          path: |
+            dist/*-${{ matrix.platform }}-plugin.zip
+            dist/*-${{ matrix.platform }}-plugin.zip.sha256
+            dist/*-${{ matrix.platform }}-marketplace.zip
+            dist/*-${{ matrix.platform }}-marketplace.zip.sha256
+            dist/*-${{ matrix.platform }}.metadata.json
+            dist/*-${{ matrix.platform }}.verification.json
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14

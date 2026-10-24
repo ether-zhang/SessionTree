@@ -1,0 +1,328 @@
+{
+  "tools": [
+    {
+      "name": "open_session_tree_button",
+      "title": "本对话会话树",
+      "description": "Native conversation-panel action. A user click opens this conversation’s own tree directly, with no chat message or model call.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "icons": [
+        {
+          "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgdmlld0JveD0iMCAwIDMyIDMyIiBmaWxsPSJub25lIj4KICA8ZyBzdHJva2U9IiMyNThiN2QiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KICAgIDxwYXRoIGQ9Ik00IDE2aDQuNWExLjUgMS41IDAgMCAwIDEuNS0xLjV2LTRBMS41IDEuNSAwIDAgMSAxMS41IDlIMTUiLz4KICAgIDxwYXRoIGQ9Ik04LjUgMTZhMS41IDEuNSAwIDAgMSAxLjUgMS41djZhMS41IDEuNSAwIDAgMCAxLjUgMS41SDI4Ii8+CiAgICA8cGF0aCBkPSJNMTUgOWg0LjVBMS41IDEuNSAwIDAgMCAyMSA3LjV2LTJBMS41IDEuNSAwIDAgMSAyMi41IDRIMjgiLz4KICAgIDxwYXRoIGQ9Ik0xOS41IDlBMS41IDEuNSAwIDAgMSAyMSAxMC41djJhMS41IDEuNSAwIDAgMCAxLjUgMS41SDI4Ii8+CiAgPC9nPgogIDxnIGZpbGw9IiMyNThiN2QiPgogICAgPGNpcmNsZSBjeD0iNCIgY3k9IjE2IiByPSIyLjQiLz4KICAgIDxjaXJjbGUgY3g9IjE1IiBjeT0iOSIgcj0iMi4yIi8+CiAgICA8Y2lyY2xlIGN4PSIxNSIgY3k9IjI1IiByPSIyLjIiLz4KICAgIDxjaXJjbGUgY3g9IjI4IiBjeT0iNCIgcj0iMi4yIi8+CiAgICA8Y2lyY2xlIGN4PSIyOCIgY3k9IjE0IiByPSIyLjIiLz4KICAgIDxjaXJjbGUgY3g9IjI4IiBjeT0iMjUiIHI9IjIuMiIvPgogIDwvZz4KPC9zdmc+Cg==",
+          "mimeType": "image/svg+xml"
+        }
+      ],
+      "_meta": {
+        "ui": {
+          "resourceUri": "ui://session-tree/conversation-button.html",
+          "visibility": [
+            "app"
+          ]
+        },
+        "openai/ui": {
+          "entrypoints": [
+            {
+              "type": "thread"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "open_session_tree_panel",
+      "title": "会话树",
+      "icons": [
+        {
+          "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgdmlld0JveD0iMCAwIDMyIDMyIiBmaWxsPSJub25lIj4KICA8ZyBzdHJva2U9IiMyNThiN2QiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KICAgIDxwYXRoIGQ9Ik00IDE2aDQuNWExLjUgMS41IDAgMCAwIDEuNS0xLjV2LTRBMS41IDEuNSAwIDAgMSAxMS41IDlIMTUiLz4KICAgIDxwYXRoIGQ9Ik04LjUgMTZhMS41IDEuNSAwIDAgMSAxLjUgMS41djZhMS41IDEuNSAwIDAgMCAxLjUgMS41SDI4Ii8+CiAgICA8cGF0aCBkPSJNMTUgOWg0LjVBMS41IDEuNSAwIDAgMCAyMSA3LjV2LTJBMS41IDEuNSAwIDAgMSAyMi41IDRIMjgiLz4KICAgIDxwYXRoIGQ9Ik0xOS41IDlBMS41IDEuNSAwIDAgMSAyMSAxMC41djJhMS41IDEuNSAwIDAgMCAxLjUgMS41SDI4Ii8+CiAgPC9nPgogIDxnIGZpbGw9IiMyNThiN2QiPgogICAgPGNpcmNsZSBjeD0iNCIgY3k9IjE2IiByPSIyLjQiLz4KICAgIDxjaXJjbGUgY3g9IjE1IiBjeT0iOSIgcj0iMi4yIi8+CiAgICA8Y2lyY2xlIGN4PSIxNSIgY3k9IjI1IiByPSIyLjIiLz4KICAgIDxjaXJjbGUgY3g9IjI4IiBjeT0iNCIgcj0iMi4yIi8+CiAgICA8Y2lyY2xlIGN4PSIyOCIgY3k9IjE0IiByPSIyLjIiLz4KICAgIDxjaXJjbGUgY3g9IjI4IiBjeT0iMjUiIHI9IjIuMiIvPgogIDwvZz4KPC9zdmc+Cg==",
+          "mimeType": "image/svg+xml"
+        }
+      ],
+      "description": "Compatibility helper for explicitly requested assistant-driven display. It is not the normal user entrypoint; the normal entrypoint is the native open_session_tree_button action. Uses the host thread ID, never a remembered ID or project path.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "ui": {
+          "resourceUri": "ui://session-tree/panel.html",
+          "visibility": [
+            "model",
+            "app"
+          ]
+        },
+        "openai/ui": {
+          "preferredModelDisplayMode": "fullscreen"
+        }
+      }
+    },
+    {
+      "name": "open_session_tree_file",
+      "title": "会话树",
+      "icons": [
+        {
+          "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgdmlld0JveD0iMCAwIDMyIDMyIiBmaWxsPSJub25lIj4KICA8ZyBzdHJva2U9IiMyNThiN2QiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KICAgIDxwYXRoIGQ9Ik00IDE2aDQuNWExLjUgMS41IDAgMCAwIDEuNS0xLjV2LTRBMS41IDEuNSAwIDAgMSAxMS41IDlIMTUiLz4KICAgIDxwYXRoIGQ9Ik04LjUgMTZhMS41IDEuNSAwIDAgMSAxLjUgMS41djZhMS41IDEuNSAwIDAgMCAxLjUgMS41SDI4Ii8+CiAgICA8cGF0aCBkPSJNMTUgOWg0LjVBMS41IDEuNSAwIDAgMCAyMSA3LjV2LTJBMS41IDEuNSAwIDAgMSAyMi41IDRIMjgiLz4KICAgIDxwYXRoIGQ9Ik0xOS41IDlBMS41IDEuNSAwIDAgMSAyMSAxMC41djJhMS41IDEuNSAwIDAgMCAxLjUgMS41SDI4Ii8+CiAgPC9nPgogIDxnIGZpbGw9IiMyNThiN2QiPgogICAgPGNpcmNsZSBjeD0iNCIgY3k9IjE2IiByPSIyLjQiLz4KICAgIDxjaXJjbGUgY3g9IjE1IiBjeT0iOSIgcj0iMi4yIi8+CiAgICA8Y2lyY2xlIGN4PSIxNSIgY3k9IjI1IiByPSIyLjIiLz4KICAgIDxjaXJjbGUgY3g9IjI4IiBjeT0iNCIgcj0iMi4yIi8+CiAgICA8Y2lyY2xlIGN4PSIyOCIgY3k9IjE0IiByPSIyLjIiLz4KICAgIDxjaXJjbGUgY3g9IjI4IiBjeT0iMjUiIHI9IjIuMiIvPgogIDwvZz4KPC9zdmc+Cg==",
+          "mimeType": "image/svg+xml"
+        }
+      ],
+      "description": "Official file viewer for a .sessiontree shortcut. Opens the current conversation tree; never reads a filesystem path from tool arguments.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 240,
+                "pattern": "^[^/\\\\\\u0000]+\\.sessiontree$"
+              },
+              "resourceUri": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              }
+            },
+            "required": [
+              "name",
+              "resourceUri"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "ui": {
+          "resourceUri": "ui://session-tree/panel.html",
+          "visibility": [
+            "app"
+          ]
+        },
+        "openai/ui": {
+          "entrypoints": [
+            {
+              "type": "file",
+              "extensions": [
+                ".sessiontree"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "session_tree_panel_data",
+      "title": "读取对话面板中的会话树",
+      "description": "Use the host-provided current thread ID. If unavailable, require explicit user selection instead of guessing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "refresh": {
+            "type": "boolean"
+          },
+          "since_revision": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "current_thread_id": {
+            "type": "string",
+            "maxLength": 36,
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "ui": {
+          "visibility": [
+            "app"
+          ]
+        }
+      }
+    },
+    {
+      "name": "session_tree_family",
+      "title": "读取当前对话所属的树",
+      "description": "UI-only family lookup for an exact current Codex thread ID supplied by the client. Never infers the active thread from recency or title.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "current_thread_id": {
+            "type": "string",
+            "maxLength": 36,
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "refresh": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "current_thread_id"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "ui": {
+          "visibility": [
+            "app"
+          ]
+        }
+      }
+    },
+    {
+      "name": "refresh_session_tree",
+      "title": "Refresh session index",
+      "description": "Rebuild the plugin-owned session tree index from local Codex metadata. Does not change original conversations.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "get_session_tree",
+      "title": "Find sessions",
+      "description": "Search the saved SessionTree index by title, workspace or native ID; results retain parent IDs. If no index exists, first call refresh_session_tree or open_session_tree_panel.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "include_archived": {
+            "type": "boolean"
+          },
+          "include_subagents": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      }
+    }
+  ],
+  "titles": {
+    "en": "Session Tree",
+    "zh-Hans": "会话树",
+    "zh-Hant": "對話樹",
+    "de": "Chatbaum",
+    "es": "Árbol de chats",
+    "fr": "Arbre des chats",
+    "it": "Albero delle chat",
+    "ja": "会話ツリー",
+    "ko": "대화 트리",
+    "pt": "Árvore de conversas",
+    "pt-PT": "Árvore de conversas",
+    "ru": "Дерево чатов",
+    "uk": "Дерево чатів",
+    "pl": "Drzewo czatów",
+    "nl": "Gespreksboom",
+    "sv": "Chattträd",
+    "da": "Chattræ",
+    "nb": "Chattre",
+    "nn": "Chattetre",
+    "fi": "Keskustelupuu",
+    "cs": "Strom chatů",
+    "sk": "Strom četov",
+    "sl": "Drevo klepetov",
+    "hr": "Stablo razgovora",
+    "bs": "Stablo razgovora",
+    "sr": "Стабло разговора",
+    "sr-Latn": "Stablo razgovora",
+    "hu": "Beszélgetésfa",
+    "ro": "Arbore de conversații",
+    "bg": "Дърво на разговорите",
+    "el": "Δέντρο συνομιλιών",
+    "tr": "Sohbet ağacı",
+    "ar": "شجرة المحادثات",
+    "he": "עץ שיחות",
+    "fa": "درخت گفتگوها",
+    "ur": "گفتگو کا درخت",
+    "hi": "बातचीत का पेड़",
+    "bn": "কথোপকথনের গাছ",
+    "gu": "વાતચીતનું વૃક્ષ",
+    "mr": "संभाषण वृक्ष",
+    "ta": "உரையாடல் மரம்",
+    "te": "సంభాషణల చెట్టు",
+    "kn": "ಸಂಭಾಷಣೆಗಳ ಮರ",
+    "ml": "സംഭാഷണ വൃക്ഷം",
+    "pa": "ਗੱਲਬਾਤ ਦਾ ਰੁੱਖ",
+    "si": "සංවාද ගස",
+    "id": "Pohon percakapan",
+    "ms": "Pokok perbualan",
+    "vi": "Cây hội thoại",
+    "th": "ต้นไม้บทสนทนา",
+    "fil": "Puno ng mga chat",
+    "my": "စကားဝိုင်းသစ်ပင်",
+    "km": "មែកធាងសន្ទនា",
+    "lo": "ຕົ້ນໄມ້ການສົນທະນາ",
+    "et": "Vestluste puu",
+    "lv": "Sarunu koks",
+    "lt": "Pokalbių medis",
+    "is": "Spjalltré",
+    "ga": "Crann comhráite",
+    "cy": "Coeden sgyrsiau",
+    "ca": "Arbre de converses",
+    "eu": "Elkarrizketen zuhaitza",
+    "gl": "Árbore de conversas",
+    "sq": "Pema e bisedave",
+    "mk": "Дрво на разговори",
+    "be": "Дрэва размоў",
+    "hy": "Զրույցների ծառ",
+    "ka": "საუბრების ხე",
+    "az": "Söhbət ağacı",
+    "kk": "Әңгімелер ағашы",
+    "uz": "Suhbatlar daraxti",
+    "mn": "Харилцан ярианы мод",
+    "af": "Gespreksboom",
+    "am": "የውይይት ዛፍ",
+    "sw": "Mti wa mazungumzo"
+  }
+}

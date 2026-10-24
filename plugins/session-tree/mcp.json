@@ -3,11 +3,9 @@
   "mcpServers": {
     "session-tree": {
       "type": "stdio",
-      "command": "node",
+      "command": "./bin/session-tree",
       "cwd": "${PLUGIN_DATA}",
-      "args": [
-        "${PLUGIN_ROOT}/src/ui/codex/mcp.mjs"
-      ],
+      "args": [],
       "env": {
         "SESSION_TREE_DATA": "${PLUGIN_DATA}"
       }

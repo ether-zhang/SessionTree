@@ -8,7 +8,7 @@ A conversation tree for Codex. Follow the origin and forks of a chat, see recent
 
 For Codex desktop on Windows x64. The package includes its runtime.
 
-The 0.6.0 universal preview migrates the UI to React + TypeScript + Vite and bundles Windows x64, Apple Silicon Mac and Intel Mac runtimes in one ZIP. See the [development guide](docs/DEVELOPMENT.md) to build and validate the preview. The installation links below remain on stable 0.5.8 while native desktop acceptance is pending.
+The `codex/rust-backend` branch previews a native Rust backend with the React + TypeScript UI. It builds separate Windows x64, Apple Silicon Mac and Intel Mac ZIPs without Node runtimes. See the [development guide](docs/DEVELOPMENT.md). The installation links below remain on stable 0.5.8 pending native desktop acceptance.
 
 Open **Plugins（插件）** in the **left sidebar**, then click **Add（添加）** in the **upper-right corner**. Choose either method below.
 

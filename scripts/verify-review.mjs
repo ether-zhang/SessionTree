@@ -5,10 +5,12 @@ import { spawnSync } from 'node:child_process';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
+import { hostTarget } from './lib/platform.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const manifest = JSON.parse(await readFile(join(root, 'plugins/session-tree/plugin.json'), 'utf8'));
-const packageRoot = join(root, 'dist', 'session-tree-' + manifest.version + '-universal', 'plugins/session-tree');
+const target = hostTarget();
+const packageRoot = join(root, 'dist', 'session-tree-' + manifest.version + '-' + target.platform, 'plugins/session-tree');
 const ids = Array.from({ length: 5 }, (_, i) => '00000000-0000-4000-8000-' + String(i + 1).padStart(12, '0'));
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const results = [];
@@ -39,7 +41,7 @@ async function main() {
     ...(threadId ? { _meta: { threadId } } : {}) } });
   function exchange(calls) {
     const init = { method: 'initialize', params: { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'synthetic-publication-check', version: '1' } } };
-    const reply = spawnSync(join(packageRoot, 'runtime/node'), [join(packageRoot, 'src/ui/codex/mcp.mjs'), '--codex-home', home, '--data-dir', data], {
+    const reply = spawnSync(join(packageRoot, 'bin', target.binary), ['--codex-home', home, '--data-dir', data], {
       cwd: work, windowsHide: true, encoding: 'utf8', timeout: 20_000,
       env: { ...process.env, CODEX_HOME: home, SESSION_TREE_CODEX_HOME: home, SESSION_TREE_DATA: data, PLUGIN_DATA: data, PATH: process.platform === 'win32' ? '' : '/usr/bin:/bin' },
       input: [init, ...calls].map((item, i) => JSON.stringify({ jsonrpc: '2.0', id: i + 1, ...item })).join('\n') + '\n',

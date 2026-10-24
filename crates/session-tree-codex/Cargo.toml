@@ -1,0 +1,20 @@
+[package]
+name = "session-tree-codex"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+session-tree-core = { path = "../session-tree-core" }
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+regex = "1"
+notify = "8.2"
+same-file = "1"
+rusqlite = { version = "0.41", features = ["bundled"] }
+zstd = "0.13"
+
+[dev-dependencies]
+tempfile.workspace = true

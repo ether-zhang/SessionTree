@@ -4,14 +4,16 @@
   "type": "module",
   "scripts": {
     "test": "node --test test/*.test.mjs",
-    "index": "node plugins/session-tree/src/cli.mjs index",
+    "index": "node scripts/run-backend.mjs index",
     "build:release": "node scripts/build-release.mjs",
     "verify:release": "node scripts/verify-release.mjs",
     "build:submission": "node scripts/build-submission.mjs",
     "verify:review": "node scripts/verify-review.mjs",
     "build:ui": "tsc --noEmit && node scripts/build-ui.mjs",
     "dev:ui": "vite",
-    "preview:ui": "node scripts/preview-thread-panel.mjs"
+    "preview:ui": "node scripts/preview-thread-panel.mjs",
+    "build:backend": "node scripts/build-backend.mjs",
+    "test:native": "node scripts/test-native.mjs"
   },
   "engines": {
     "node": ">=24"

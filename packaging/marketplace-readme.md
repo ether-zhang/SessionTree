@@ -6,7 +6,7 @@ A conversation tree for Codex. Follow the origin and forks of a chat, see recent
 
 ## Install
 
-The 0.6.0 universal preview contains runtimes for Windows x64, Apple Silicon Mac and Intel Mac in one ZIP. It requires no separately installed Node.js. Native desktop acceptance is still pending; the stable installation links below remain on Windows 0.5.8.
+The 0.7.0 preview uses a native Rust service and the React UI. Each platform has its own package and needs no Node.js or Rust installation. To test this build, select its matching -plugin.zip in **Plugins → Add → Upload plugin archive**, or add this unpacked marketplace root as a local source. The stable public links below remain on Windows 0.5.8 until the preview is accepted.
 
 Open **Plugins（插件）** in the **left sidebar**, then click **Add（添加）** in the **upper-right corner**. Choose either method below.
 
@@ -27,7 +27,7 @@ Open **Plugins（插件）** in the **left sidebar**, then click **Add（添加�
 | Git ref（Git 引用） | `marketplace` |
 | Sparse paths（稀疏路径） | Leave empty |
 
-3. Click **Add marketplace（添加市场）**, select the **SessionTree (Windows x64)** stable source, and click **Install（安装）** on SessionTree. A locally built universal preview uses the source name **SessionTree**.
+3. Click **Add marketplace（添加市场）**, select the **SessionTree (Windows x64)** stable source, and click **Install（安装）** on SessionTree. Locally built native previews label the source with their target platform.
 
 Use one installation method to avoid duplicate copies. Reopen the client if needed. Open the tree from a conversation's right-hand pane: **New tab → More tools → Session Tree**.
 
