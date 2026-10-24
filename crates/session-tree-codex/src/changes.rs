@@ -59,7 +59,11 @@ impl ChangeTracker {
                     RecursiveMode::Recursive,
                 ),
             ] {
-                if !self.watched.contains(&path) && watcher.watch(&path, mode).is_ok() {
+                // FSEvents restarts its stream even when adding a missing path fails.
+                if !self.watched.contains(&path)
+                    && path.is_dir()
+                    && watcher.watch(&path, mode).is_ok()
+                {
                     self.watched.insert(path);
                 }
             }
@@ -80,6 +84,15 @@ impl ChangeTracker {
             if matches!(event.kind, EventKind::Access(_)) {
                 continue;
             }
+            if event.need_rescan() {
+                self.pending.full = true;
+            }
+            let structural = matches!(
+                event.kind,
+                EventKind::Create(_)
+                    | EventKind::Remove(_)
+                    | EventKind::Modify(notify::event::ModifyKind::Name(_))
+            );
             for path in event.paths {
                 let name = path
                     .file_name()
@@ -88,12 +101,13 @@ impl ChangeTracker {
                 if path.parent() == Some(self.home.as_path()) {
                     self.pending.names |= name == "session_index.jsonl";
                     self.pending.state |= name.starts_with("state_") && name.contains(".sqlite");
-                    if ["sessions", "archived_sessions"].contains(&name) {
+                    if ["sessions", "archived_sessions"].contains(&name) && structural {
                         self.pending.discover = true;
-                        if let Some(watcher) = &mut self.watcher {
+                        if self.watched.remove(&path)
+                            && let Some(watcher) = &mut self.watcher
+                        {
                             let _ = watcher.unwatch(&path);
                         }
-                        self.watched.remove(&path);
                     }
                 } else if path.starts_with(self.home.join("sessions"))
                     || path.starts_with(self.home.join("archived_sessions"))
