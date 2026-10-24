@@ -79,5 +79,8 @@ jobs:
       - name: Diagnose native macOS watcher
         run: |
           for attempt in 1 2 3 4 5; do
-            cargo test --locked -p session-tree-codex --lib tests::warm_checks_read_nothing_and_append_keeps_both_authors_and_partial_records -- --nocapture || exit $?
+            cargo test --locked -p session-tree-codex --lib tests::warm_checks_skip_content_reads_and_append_keeps_authors -- --nocapture || exit $?
           done
+
+      - name: Check macOS warm index and native service compilation
+        run: cargo test --locked -p session-tree --bin session-tree warm_refresh_preserves_the_index_file_and_skips_content_reads

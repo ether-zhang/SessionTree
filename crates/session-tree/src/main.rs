@@ -604,3 +604,48 @@ fn main() -> Result<()> {
         server.stdio()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn warm_refresh_preserves_the_index_file_and_skips_content_reads() {
+        let root = tempfile::tempdir().unwrap();
+        let home = root.path().join("profile");
+        let sessions = home.join("sessions");
+        fs::create_dir_all(&sessions).unwrap();
+        let id = "00000000-0000-4000-8000-000000000001";
+        fs::write(
+            sessions.join("rollout-fixture.jsonl"),
+            json!({"type":"session_meta","payload":{"id":id,"timestamp":"2026-10-25T00:00:00Z"}})
+                .to_string()
+                + "\n",
+        )
+        .unwrap();
+        let path = root.path().join("data/session-tree.index.json");
+        let mut service = Service {
+            adapter: CodexAdapter::new(home),
+            path: path.clone(),
+            snapshot: None,
+            signature: None,
+        };
+        let first = service.refresh(false).unwrap();
+        service.observe_index(&first);
+        let untouched = std::time::UNIX_EPOCH + std::time::Duration::from_secs(86400);
+        fs::OpenOptions::new()
+            .write(true)
+            .open(&path)
+            .unwrap()
+            .set_times(fs::FileTimes::new().set_modified(untouched))
+            .unwrap();
+        let metrics = service.adapter.metrics.clone();
+        let next = service.refresh(false).unwrap();
+        assert_eq!(next, first);
+        assert_eq!(fs::metadata(path).unwrap().modified().unwrap(), untouched);
+        assert_eq!(
+            service.adapter.metrics.metadata_reads,
+            metrics.metadata_reads
+        );
+        assert_eq!(service.adapter.metrics.body_reads, metrics.body_reads);
+    }
+}

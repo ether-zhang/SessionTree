@@ -621,7 +621,7 @@ mod tests {
     use super::*;
     use std::io::Write;
     #[test]
-    fn warm_checks_read_nothing_and_append_keeps_both_authors_and_partial_records() {
+    fn warm_checks_skip_content_reads_and_append_keeps_authors() {
         let directory = tempfile::tempdir().unwrap();
         let sessions = directory.path().join("sessions");
         fs::create_dir(&sessions).unwrap();
@@ -643,8 +643,20 @@ mod tests {
         adapter.scan(false).unwrap();
         adapter.observe(&[id.to_owned()]);
         let metrics = adapter.metrics.clone();
-        assert!(adapter.scan(false).unwrap().is_none());
-        assert_eq!(adapter.metrics, metrics);
+        // Filesystem hints may be duplicated; unchanged files must not be reread.
+        adapter.scan(false).unwrap();
+        assert_eq!(
+            adapter.metrics.metadata_reads,
+            metrics.metadata_reads,
+            "{}",
+            adapter.changes.diagnostics()
+        );
+        assert_eq!(
+            adapter.metrics.body_reads,
+            metrics.body_reads,
+            "{}",
+            adapter.changes.diagnostics()
+        );
         let cache_path = adapter.home.join("sessions/rollout-fixture.jsonl");
         let first = adapter
             .cache
