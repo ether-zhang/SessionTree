@@ -1,0 +1,33 @@
+{
+  "format": 3,
+  "plugin": "session-tree",
+  "version": "0.7.1",
+  "platform": "macos-x64",
+  "target": "darwin-x64",
+  "rustTarget": "x86_64-apple-darwin",
+  "entry": "bin/session-tree",
+  "marketplace": "session-tree",
+  "executableFiles": [
+    "plugins/session-tree/bin/session-tree"
+  ],
+  "files": {
+    ".agents/plugins/marketplace.json": "8c7a5872246f50355990b39a6d0960fe612d561ffe99c9a0a4f7055473cabaa3",
+    ".gitattributes": "705fd4d6451a31d36b3df7de96f83f30ac976c9b4a6d1e51671d8e2f33e2d0da",
+    "LICENSE": "0a124ddf1c89d627b0febfd74feb6e97f817ba5fa9966c5278240edfd6fcec6d",
+    "plugins/session-tree/assets/frontend-licenses.txt": "cad67f4512a114180e749dd296ac9a7091a5271d2dcd4253fae98809b93924e9",
+    "plugins/session-tree/assets/session-tree.png": "870cbdb1ba5e4737274c986c4f3e7faf796952f4297d92bcf11b1aba86d2d338",
+    "plugins/session-tree/assets/session-tree.svg": "a0731405a3658827b41d96e0d8853c4970ff17d55602d20d516926e42fcacc10",
+    "plugins/session-tree/bin/session-tree": "d258b02cca62f902b9483630c6883711851f401d8cfb0ff7ef26961270f7cc72",
+    "plugins/session-tree/LICENSE": "0a124ddf1c89d627b0febfd74feb6e97f817ba5fa9966c5278240edfd6fcec6d",
+    "plugins/session-tree/mcp.json": "e66df3510df967c413c62811322bda35c10c6c1476c77293782b83528a4fc318",
+    "plugins/session-tree/plugin.json": "fcf5de9deccd321a21000de961c5ab44cf295d943a3e5f56ae67022916f6d0cb",
+    "plugins/session-tree/THIRD_PARTY_NOTICES.txt": "d5048ab6cdb5e9f1c5d5501a7245db1be3ffc421b0a4fd236d60fc6a79ea600d",
+    "README.md": "617801e25b18615b9e45c05fedb96739530d53166e3219fd2494a15b7b2f0f58"
+  },
+  "provenance": {
+    "sourceCommit": "3edd5fd2d2011bbeb2d0dcbbcc19828dd3c7e4db",
+    "workflow": "https://github.com/ether-zhang/SessionTree/actions/runs/40167614124",
+    "pluginArchiveSha256": "3955804dee9ca2b4c9d03da48eb04d67b61d930a9dcdf8ae05107de119f6de79",
+    "distributionBranch": "codex/marketplace-macos-x64"
+  }
+}
