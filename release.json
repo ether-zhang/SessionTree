@@ -1,0 +1,33 @@
+{
+  "format": 3,
+  "plugin": "session-tree",
+  "version": "0.7.1",
+  "platform": "windows-x64",
+  "target": "win32-x64",
+  "rustTarget": "x86_64-pc-windows-msvc",
+  "entry": "bin/session-tree.exe",
+  "marketplace": "session-tree",
+  "executableFiles": [
+    "plugins/session-tree/bin/session-tree.exe"
+  ],
+  "files": {
+    ".agents/plugins/marketplace.json": "40dc3219f56c564f9242851de0cc3a01ae9c0c4f6524b3c342ff839c8988a436",
+    ".gitattributes": "705fd4d6451a31d36b3df7de96f83f30ac976c9b4a6d1e51671d8e2f33e2d0da",
+    "LICENSE": "0a124ddf1c89d627b0febfd74feb6e97f817ba5fa9966c5278240edfd6fcec6d",
+    "plugins/session-tree/assets/frontend-licenses.txt": "cad67f4512a114180e749dd296ac9a7091a5271d2dcd4253fae98809b93924e9",
+    "plugins/session-tree/assets/session-tree.png": "870cbdb1ba5e4737274c986c4f3e7faf796952f4297d92bcf11b1aba86d2d338",
+    "plugins/session-tree/assets/session-tree.svg": "a0731405a3658827b41d96e0d8853c4970ff17d55602d20d516926e42fcacc10",
+    "plugins/session-tree/bin/session-tree.exe": "4324b0b9354b4d03e13395994ea0230764ac279b528718ac77210cd9923b1af3",
+    "plugins/session-tree/LICENSE": "0a124ddf1c89d627b0febfd74feb6e97f817ba5fa9966c5278240edfd6fcec6d",
+    "plugins/session-tree/mcp.json": "2a8391f92fa739845b8d2d68ae6ca290bf4e32462f45551bd677a6ed3445756c",
+    "plugins/session-tree/plugin.json": "fcf5de9deccd321a21000de961c5ab44cf295d943a3e5f56ae67022916f6d0cb",
+    "plugins/session-tree/THIRD_PARTY_NOTICES.txt": "d5048ab6cdb5e9f1c5d5501a7245db1be3ffc421b0a4fd236d60fc6a79ea600d",
+    "README.md": "1cb359ef99ebbb275745f15fe8d9eeb474b9b6fa9031dc28b0e3e8490d9707d9"
+  },
+  "provenance": {
+    "sourceCommit": "3edd5fd2d2011bbeb2d0dcbbcc19828dd3c7e4db",
+    "workflow": "https://github.com/ether-zhang/SessionTree/actions/runs/40167614124",
+    "pluginArchiveSha256": "403a626edeed24ab36693fbc82c7a434a3fd1614e8d22f0a29f8dd9fec47a755",
+    "distributionBranch": "codex/marketplace-windows-x64"
+  }
+}

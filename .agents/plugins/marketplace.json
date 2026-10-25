@@ -1,0 +1,20 @@
+{
+  "name": "session-tree",
+  "interface": {
+    "displayName": "SessionTree (Windows x64)"
+  },
+  "plugins": [
+    {
+      "name": "session-tree",
+      "source": {
+        "source": "local",
+        "path": "./plugins/session-tree"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
