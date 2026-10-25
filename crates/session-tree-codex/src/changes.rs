@@ -1,9 +1,11 @@
-use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+//! Request-driven database checks. No watchers, event queues, threads or timers.
+use anyhow::Result;
+use rusqlite::{Connection, OpenFlags};
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::BTreeMap,
+    fs,
     path::{Path, PathBuf},
-    sync::mpsc::{self, Receiver},
-    time::{Duration, Instant},
+    time::Duration,
 };
 
 pub fn path_key(path: &Path) -> String {
@@ -24,136 +26,94 @@ pub struct Changes {
     pub names: bool,
     pub state: bool,
     pub discover: bool,
+    pub database: bool,
+    pub state_path: Option<PathBuf>,
 }
 pub struct ChangeTracker {
     home: PathBuf,
-    watcher: Option<RecommendedWatcher>,
-    events: Receiver<notify::Result<Event>>,
-    watched: BTreeSet<PathBuf>,
-    next_check: Instant,
+    db: Option<(PathBuf, Connection, i64)>,
+    initialized: bool,
     pending: Changes,
-    #[cfg(target_os = "macos")]
-    probe: crate::probe::MetadataProbe,
+    focused: BTreeMap<String, PathBuf>,
 }
 impl ChangeTracker {
     pub fn new(home: &Path) -> Self {
-        let (sender, events) = mpsc::channel();
-        let watcher = notify::recommended_watcher(move |event| {
-            let _ = sender.send(event);
-        })
-        .ok();
         Self {
             home: home.into(),
-            watcher,
-            events,
-            watched: BTreeSet::new(),
-            next_check: Instant::now(),
+            db: None,
+            initialized: false,
             pending: Changes::default(),
-            #[cfg(target_os = "macos")]
-            probe: crate::probe::MetadataProbe::new(home),
+            focused: BTreeMap::new(),
         }
     }
-    fn start(&mut self) {
-        if let Some(watcher) = &mut self.watcher {
-            for (path, mode) in [
-                (self.home.clone(), RecursiveMode::NonRecursive),
-                (self.home.join("sessions"), RecursiveMode::Recursive),
-                (
-                    self.home.join("archived_sessions"),
-                    RecursiveMode::Recursive,
-                ),
-            ] {
-                // FSEvents restarts its stream even when adding a missing path fails.
-                if !self.watched.contains(&path)
-                    && path.is_dir()
-                    && watcher.watch(&path, mode).is_ok()
-                {
-                    self.watched.insert(path);
-                }
-            }
+    fn open_database(&mut self, reopen: bool) -> Result<()> {
+        let latest = fs::read_dir(&self.home)?
+            .filter_map(Result::ok)
+            .filter_map(|entry| {
+                let name = entry.file_name().to_str()?.to_owned();
+                Some((
+                    name.strip_prefix("state_")?
+                        .strip_suffix(".sqlite")?
+                        .parse::<u64>()
+                        .ok()?,
+                    entry.path(),
+                ))
+            })
+            .max_by_key(|entry| entry.0)
+            .map(|entry| entry.1);
+        if !reopen && latest.as_ref() == self.db.as_ref().map(|entry| &entry.0) {
+            return Ok(());
+        }
+        self.db = if let Some(path) = latest {
+            let connection = Connection::open_with_flags(
+                &path,
+                OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+            )?;
+            connection.busy_timeout(Duration::from_millis(200))?;
+            let version = connection.query_row("PRAGMA data_version", [], |row| row.get(0))?;
+            Some((path, connection, version))
+        } else {
+            None
+        };
+        self.pending.state = true;
+        Ok(())
+    }
+    pub fn focus(&mut self, paths: BTreeMap<String, PathBuf>, changed: bool) {
+        self.focused = paths;
+        if changed {
+            self.pending.paths.extend(self.focused.clone());
         }
     }
     pub fn retry(&mut self) {
-        self.pending.full = true;
+        self.initialized = false;
     }
-    #[cfg(target_os = "macos")]
-    pub fn observe(&mut self, files: impl IntoIterator<Item = (PathBuf, crate::Stamp)>) {
-        self.probe.observe(files);
-    }
-    pub fn take(&mut self, force: bool) -> Option<Changes> {
-        if !force {
-            self.start();
+    pub fn take(&mut self, opening: bool) -> Result<Option<Changes>> {
+        let first = !self.initialized;
+        if first || opening {
+            self.open_database(opening)?;
         }
-        #[cfg(target_os = "macos")]
-        self.probe.take(&mut self.pending);
-        while let Ok(event) = self.events.try_recv() {
-            let Ok(event) = event else {
-                self.pending.full = true;
-                continue;
-            };
-            if matches!(event.kind, EventKind::Access(_)) {
-                continue;
-            }
-            if event.need_rescan() {
-                self.pending.full = true;
-            }
-            let structural = matches!(
-                event.kind,
-                EventKind::Create(_)
-                    | EventKind::Remove(_)
-                    | EventKind::Modify(notify::event::ModifyKind::Name(_))
-            );
-            for path in event.paths {
-                let name = path
-                    .file_name()
-                    .and_then(|name| name.to_str())
-                    .unwrap_or("");
-                if path.parent() == Some(self.home.as_path()) {
-                    self.pending.names |= name == "session_index.jsonl";
-                    self.pending.state |= name.starts_with("state_") && name.contains(".sqlite");
-                    if ["sessions", "archived_sessions"].contains(&name) && structural {
-                        self.pending.discover = true;
-                        if self.watched.remove(&path)
-                            && let Some(watcher) = &mut self.watcher
-                        {
-                            let _ = watcher.unwatch(&path);
-                        }
-                    }
-                } else if path.starts_with(self.home.join("sessions"))
-                    || path.starts_with(self.home.join("archived_sessions"))
-                {
-                    if super::rollout_name(&path) {
-                        self.pending.paths.insert(path_key(&path), path);
-                    }
-                    if matches!(
-                        event.kind,
-                        EventKind::Create(_)
-                            | EventKind::Remove(_)
-                            | EventKind::Modify(notify::event::ModifyKind::Name(_))
-                    ) {
-                        self.pending.discover = true;
-                    }
-                }
-            }
+        let mut database_changed = false;
+        if let Some((_, connection, before)) = &mut self.db {
+            let current =
+                connection.query_row("PRAGMA data_version", [], |row| row.get::<_, i64>(0))?;
+            database_changed = current != *before;
+            *before = current;
         }
-        if force || Instant::now() >= self.next_check || self.pending.full {
-            self.pending.full = true;
-            self.pending.names = true;
+        if first || opening || database_changed {
             self.pending.state = true;
-            self.pending.discover = true;
-            self.next_check = Instant::now()
-                + Duration::from_secs(if self.watched.len() >= 2 { 120 } else { 15 });
+            self.pending.names = first || opening;
+            self.pending.database = self.db.is_some();
+            self.pending.discover = self.db.is_none();
+            self.pending.full = first && self.db.is_none();
+            self.pending.paths.extend(self.focused.clone());
         }
+        self.initialized = true;
         let pending = &self.pending;
-        if !pending.full
-            && !pending.names
-            && !pending.state
-            && !pending.discover
-            && pending.paths.is_empty()
-        {
-            None
-        } else {
-            Some(std::mem::take(&mut self.pending))
+        if !pending.state && !pending.names && !pending.discover && pending.paths.is_empty() {
+            return Ok(None);
         }
+        self.pending.database = self.db.is_some();
+        self.pending.state_path = self.db.as_ref().map(|entry| entry.0.clone());
+        Ok(Some(std::mem::take(&mut self.pending)))
     }
 }

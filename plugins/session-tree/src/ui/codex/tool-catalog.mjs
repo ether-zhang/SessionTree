@@ -31,6 +31,7 @@ export const tools = [
     description: 'Use the host-provided current thread ID. If unavailable, require explicit user selection instead of guessing.',
     inputSchema: { type: 'object', properties: {
       refresh: { type: 'boolean' },
+      open_check: { type: 'boolean' },
       since_revision: { type: 'string', maxLength: 128 },
       current_thread_id: { type: 'string', maxLength: 36, pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' },
     }, additionalProperties: false },

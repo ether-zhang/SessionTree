@@ -15,9 +15,9 @@ This type-checks and bundles the React frontend, compiles the Rust service, and 
 
 | Host | Output prefix | Rust target |
 | --- | --- | --- |
-| Windows x64 | dist/session-tree-0.7.0-windows-x64 | x86_64-pc-windows-msvc |
-| Apple Silicon Mac | dist/session-tree-0.7.0-macos-arm64 | aarch64-apple-darwin |
-| Intel Mac | dist/session-tree-0.7.0-macos-x64 | x86_64-apple-darwin |
+| Windows x64 | dist/session-tree-0.7.1-windows-x64 | x86_64-pc-windows-msvc |
+| Apple Silicon Mac | dist/session-tree-0.7.1-macos-arm64 | aarch64-apple-darwin |
+| Intel Mac | dist/session-tree-0.7.1-macos-x64 | x86_64-apple-darwin |
 
 For each prefix:
 
@@ -42,7 +42,7 @@ npm run test:native
 npm run verify:release
 ~~~
 
-The native checks reuse the existing protocol tests and compare the Rust index with the JavaScript reference adapter. Fixtures cover SQLite/WAL, plain and compressed conversations, canonical fork metadata, archives, subagents, missing ancestors, attachment/selection text, bounded append reads, and warm checks with no additional reads. The old JavaScript backend is retained as a migration reference and is excluded from distribution.
+The native checks reuse the existing protocol tests and compare the Rust index with the JavaScript reference adapter. Fixtures cover SQLite/WAL, plain and compressed conversations, canonical fork metadata, archives, subagents, missing ancestors, attachment/selection text, bounded append reads, and database-version checks without additional conversation reads. The old JavaScript backend is retained as a migration reference and is excluded from distribution.
 
 The release check uses a temporary Git marketplace and isolated Codex home. It checks ZIP hashes and executable permissions, installs the package, launches the resolved binary without Node/Rust on PATH, checks native library dependencies, reads a synthetic conversation tree and embedded UI, then uninstalls it. It never signs in, calls a model API, or changes the active plugin installation.
 
@@ -72,10 +72,10 @@ npm run build:backend
 The three layers remain separate:
 
 - **Generic tree/index:** crates/session-tree-core owns records, ancestry, missing parents and cycle repair.
-- **Agent adapter:** crates/session-tree-codex owns Codex files, SQLite metadata, previews and filesystem change tracking.
+- **Agent adapter:** crates/session-tree-codex owns Codex files, SQLite metadata, previews and request-driven database version checks.
 - **Host UI:** frontend/codex owns the React panel; crates/session-tree serves the existing MCP protocol and embedded assets. Pure browser layout and localization modules remain independent of native storage.
 
-Commit generated panel.html and native-catalog.json with frontend/catalog changes. File events only invalidate caches. Visible panels retain their existing low-frequency revision checks; warm checks do not reread conversation bodies or rewrite the index. On macOS, those checks also compare metadata for the visible families, their directories, the name index and SQLite/WAL. This handles logs held open by Codex without watching every file or polling every conversation. Observed families expire when their panels stop requesting data.
+Commit generated panel.html and native-catalog.json with frontend/catalog changes. Version 0.7.1 has no filesystem watchers, event queue, sampling timer or background scanner. Each open/resume checks the database once; foreground requests use PRAGMA data_version on the same read-only connection without a long transaction. An unchanged database returns the cached panel before copying the index. New or changed database rows supply rollout paths; only the selected family needs fresh message excerpts. Missing host context does not subscribe to all conversations. Existing relationships are reused from the plugin-owned index. A first index reads previously unknown session headers; previews have a shared 64 MiB per UI-request budget. Failed, unchanged previews are not retried on every update. Legacy profiles without SQLite are discovered only on initial load and explicit open/refresh. Hidden panels send no polling requests.
 
 ## Install and Git distribution
 
@@ -84,7 +84,7 @@ For a locally built preview, use **Plugins → Add → Upload plugin archive** a
 Alternatively, unpack the -marketplace.zip and add its marketplace root as a local source in **Plugins → Add → Add plugin marketplace**. Then select **SessionTree (your platform)** and click **Install**. The CLI equivalent on Windows is:
 
 ~~~shell
-codex plugin marketplace add ./dist/session-tree-0.7.0-windows-x64
+codex plugin marketplace add ./dist/session-tree-0.7.1-windows-x64
 ~~~
 
 Git installation uses precompiled release payloads. The planned release layout is:

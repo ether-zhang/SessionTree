@@ -8,6 +8,7 @@ use std::{
     env, fs,
     io::{self, BufRead, Read, Write},
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -43,32 +44,44 @@ fn visible_nodes(index: &Index) -> Value {
 struct Service {
     adapter: CodexAdapter,
     path: PathBuf,
-    snapshot: Option<Index>,
+    snapshot: Option<Arc<Index>>,
     signature: Option<String>,
 }
 impl Service {
-    fn observe_index(&mut self, index: &Index) {
-        #[cfg(target_os = "macos")]
+    fn observe_index(&mut self, index: &Index) -> bool {
         self.adapter.observe(
             &index
                 .nodes
                 .iter()
                 .filter_map(|node| node.native_id.clone())
                 .collect::<Vec<_>>(),
-        );
-        #[cfg(not(target_os = "macos"))]
-        let _ = index;
+        )
     }
     fn observe_current(&mut self, native: Option<&str>) {
-        #[cfg(target_os = "macos")]
         if let (Some(id), Some(index)) = (native, self.snapshot.as_ref()) {
             let selected = family(&conversation_index(index), &key(id));
-            self.observe_index(&selected);
+            if selected.nodes.is_empty() {
+                self.adapter.observe(&[id.to_owned()]);
+            } else {
+                self.observe_index(&selected);
+            }
+        } else {
+            self.adapter
+                .observe(&native.map(|id| vec![id.to_owned()]).unwrap_or_default());
         }
-        #[cfg(not(target_os = "macos"))]
-        let _ = native;
     }
-    fn refresh(&mut self, force: bool) -> Result<Index> {
+    fn refresh(&mut self, force: bool) -> Result<Arc<Index>> {
+        if self.snapshot.is_none()
+            && let Ok(bytes) = fs::read(&self.path)
+            && let Ok(index) = serde_json::from_slice::<Index>(&bytes)
+            && index.version == 1
+        {
+            self.adapter.seed(&index);
+            self.signature = Some(signature(
+                &json!({"nodes":visible_nodes(&index),"issues":index.issues}),
+            ));
+            self.snapshot = Some(Arc::new(index));
+        }
         let scan = self.adapter.scan(force)?;
         if scan.is_none()
             && let Some(index) = &self.snapshot
@@ -85,10 +98,11 @@ impl Service {
         }
         write_json(&self.path, &index)?;
         self.signature = Some(next);
+        let index = Arc::new(index);
         self.snapshot = Some(index.clone());
         Ok(index)
     }
-    fn read(&mut self) -> Result<Index> {
+    fn read(&mut self) -> Result<Arc<Index>> {
         if let Some(index) = &self.snapshot {
             return Ok(index.clone());
         }
@@ -96,10 +110,12 @@ impl Service {
         if index.version != 1 {
             bail!("Unsupported session tree index.");
         }
+        self.adapter.seed(&index);
+        let index = Arc::new(index);
         self.snapshot = Some(index.clone());
         Ok(index)
     }
-    fn read_or_refresh(&mut self) -> Result<Index> {
+    fn read_or_refresh(&mut self) -> Result<Arc<Index>> {
         if self.snapshot.is_none() && !self.path.exists() {
             self.refresh(true)
         } else {
@@ -298,6 +314,7 @@ fn resource_uri(uri: &str) -> bool {
             .all(|part| !part.is_empty() && part.bytes().all(|c| c.is_ascii_digit()))
 }
 struct Server {
+    cached_panel: Option<(Arc<Index>, String, Value)>,
     service: Service,
     catalog: Value,
     locale: Option<String>,
@@ -321,20 +338,67 @@ impl Server {
         ]
         .contains(&name)
         {
-            self.service.observe_current(
-                meta["threadId"]
-                    .as_str()
-                    .or_else(|| args["current_thread_id"].as_str()),
-            );
-            let index = self.service.refresh(args["refresh"] == true)?;
-            let panel = panel_snapshot(&index, meta, &args["current_thread_id"])?;
-            if name == "session_tree_panel_data" && args["since_revision"] == panel["revision"] {
+            let opening = name != "session_tree_panel_data"
+                || args["refresh"] == true
+                || args["open_check"] == true;
+            let host = if meta["threadId"].is_null() {
+                None
+            } else {
+                Some(native_id(&meta["threadId"])?)
+            };
+            let chosen = if args["current_thread_id"].is_null() {
+                None
+            } else {
+                Some(native_id(&args["current_thread_id"])?)
+            };
+            if host.is_some() && chosen.is_some() && host != chosen {
+                bail!("当前对话已经切换，请重新载入会话树。");
+            }
+            let scope = serde_json::to_string(&(host.clone(), chosen.clone()))?;
+            let same_scope = self
+                .cached_panel
+                .as_ref()
+                .is_some_and(|(_, key, _)| key == &scope);
+            self.service.adapter.begin_request();
+            if !same_scope {
+                self.service
+                    .observe_current(host.as_deref().or(chosen.as_deref()));
+            }
+            let mut index = self.service.refresh(opening)?;
+            if name == "session_tree_panel_data"
+                && let Some((cached, key, panel)) = &self.cached_panel
+                && key == &scope
+                && Arc::ptr_eq(cached, &index)
+                && args["since_revision"] == panel["revision"]
+            {
                 let mut result = text_result(json!({"unchanged":true}), "会话树没有变化。");
                 result["_meta"] = json!({"locale":self.locale,"sessionTreeUnchanged":{"revision":panel["revision"],"nativeId":panel["nativeId"],"mode":panel["mode"]}});
                 return Ok(result);
             }
-            let selected: Index = serde_json::from_value(panel["index"].clone())?;
-            self.service.observe_index(&selected);
+            let mut panel = if let Some((cached, key, panel)) = &self.cached_panel
+                && key == &scope
+                && Arc::ptr_eq(cached, &index)
+            {
+                panel.clone()
+            } else {
+                panel_snapshot(&index, meta, &args["current_thread_id"])?
+            };
+            let mut selected: Index = serde_json::from_value(panel["index"].clone())?;
+            if panel["mode"] != "choose" && self.service.observe_index(&selected) {
+                let fresh = self.service.refresh(false)?;
+                if !Arc::ptr_eq(&fresh, &index) {
+                    index = fresh;
+                    panel = panel_snapshot(&index, meta, &args["current_thread_id"])?;
+                    selected = serde_json::from_value(panel["index"].clone())?;
+                }
+            }
+            if name == "session_tree_panel_data" && args["since_revision"] == panel["revision"] {
+                let mut result = text_result(json!({"unchanged":true}), "会话树没有变化。");
+                result["_meta"] = json!({"locale":self.locale,"sessionTreeUnchanged":{"revision":panel["revision"],"nativeId":panel["nativeId"],"mode":panel["mode"]}});
+                self.cached_panel = Some((index, scope, panel));
+                return Ok(result);
+            }
+            self.cached_panel = Some((index, scope, panel.clone()));
             let mut data = summary(&selected);
             data["currentThreadId"] = panel["nativeId"].clone();
             let message = if name == "open_session_tree_panel" {
@@ -588,6 +652,7 @@ fn main() -> Result<()> {
     };
     let icons = json!([{"src":format!("data:image/svg+xml;base64,{}",STANDARD.encode(ICON)),"mimeType":"image/svg+xml"}]);
     let mut server = Server {
+        cached_panel: None,
         service,
         catalog: serde_json::from_str(CATALOG)?,
         locale: None,
@@ -608,6 +673,71 @@ fn main() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn every_open_checks_again_but_foreground_polling_waits_for_database_changes() {
+        let root = tempfile::tempdir().unwrap();
+        let home = root.path().join("profile");
+        let sessions = home.join("sessions");
+        fs::create_dir_all(&sessions).unwrap();
+        let id = "00000000-0000-4000-8000-000000000001";
+        let log = sessions.join("rollout-fixture.jsonl");
+        fs::write(
+            &log,
+            json!({"type":"session_meta","payload":{"id":id}}).to_string() + "\n",
+        )
+        .unwrap();
+        let db = rusqlite::Connection::open(home.join("state_5.sqlite")).unwrap();
+        db.execute_batch("PRAGMA journal_mode=WAL; CREATE TABLE threads(id TEXT,rollout_path TEXT,title TEXT,archived INTEGER);").unwrap();
+        db.execute(
+            "INSERT INTO threads VALUES (?1,?2,'fixture',0)",
+            rusqlite::params![id, log.to_str()],
+        )
+        .unwrap();
+        let service = Service {
+            adapter: CodexAdapter::new(home),
+            path: root.path().join("data/index.json"),
+            snapshot: None,
+            signature: None,
+        };
+        let mut server = Server {
+            cached_panel: None,
+            service,
+            catalog: serde_json::from_str(CATALOG).unwrap(),
+            locale: None,
+            entry_ready: false,
+            icons: json!([]),
+        };
+        let meta = json!({"threadId":id});
+        let first = server
+            .call("open_session_tree_button", &json!({}), &meta)
+            .unwrap();
+        let revision = first["_meta"]["sessionTreePanel"]["revision"].clone();
+        let before = server.service.adapter.metrics.body_reads;
+        let mut writer = fs::OpenOptions::new().append(true).open(&log).unwrap();
+        writeln!(writer,"{}",json!({"type":"event_msg","payload":{"type":"agent_message","message":"new while open"}})).unwrap();
+        let unchanged = server
+            .call(
+                "session_tree_panel_data",
+                &json!({"since_revision":revision}),
+                &meta,
+            )
+            .unwrap();
+        assert_eq!(unchanged["structuredContent"]["unchanged"], true);
+        assert_eq!(server.service.adapter.metrics.body_reads, before);
+        let reopened = server
+            .call(
+                "session_tree_panel_data",
+                &json!({"open_check":true}),
+                &meta,
+            )
+            .unwrap();
+        assert_eq!(
+            reopened["_meta"]["sessionTreePanel"]["index"]["nodes"][0]["latestMessages"]["assistant"],
+            "new while open"
+        );
+        assert_eq!(server.service.adapter.metrics.directory_scans, 0);
+        drop(db);
+    }
     #[test]
     fn warm_refresh_preserves_the_index_file_and_skips_content_reads() {
         let root = tempfile::tempdir().unwrap();

@@ -24,7 +24,8 @@ export function useSessionTree() {
     const bridge = new AppBridge(window, { displayModes: ['fullscreen'] }) as unknown as Bridge;
     let lastPanel: Panel | null = null, selected: string | undefined, clientLocale: string | undefined;
     let epoch = 0, stopped = false, busy = false, navigating = false, inView = true, delay = 12000;
-    let timer: number | undefined;
+    let timer: number | undefined, queued: LoadOptions | undefined;
+    let needsOpenCheck = true, lastCheckedAt = 0, contextDirty = false;
 
     function applyContext(context: HostContext = {}) {
       if (context.theme === 'light' || context.theme === 'dark') setTheme(context.theme);
@@ -37,16 +38,31 @@ export function useSessionTree() {
         timer = window.setTimeout(() => void load({ background: true }), delay);
       }
     }
-    async function load({ refresh = false, background = false, context = false }: LoadOptions = {}) {
-      if (stopped || bridge.closed || (busy && background)) return;
+    async function load({ refresh = false, background = false, context = false, opening = false }: LoadOptions = {}) {
+      if (stopped || bridge.closed) return;
+      if (document.hidden || !inView) {
+        needsOpenCheck = true;
+        if (context) { contextDirty = true; epoch++; setTransitioning(true); }
+        return;
+      }
+      context ||= contextDirty;
+      if (busy) {
+        if (opening || context || refresh) {
+          queued = { refresh: refresh || queued?.refresh, context: context || queued?.context, opening: true };
+          if (context) { epoch++; setTransitioning(true); }
+        }
+        return;
+      }
+      opening ||= needsOpenCheck;
       window.clearTimeout(timer);
       const ticket = ++epoch, previous = lastPanel;
       busy = true; setLoading(true);
       if (context || !previous) { setTransitioning(true); setStatus({ key: 'loading', error: false, detail: '' }); }
       else if (!background) setStatus({ key: 'loading', error: false, detail: '' });
       try {
-        const next = await bridge.loadPanel({ refresh, currentThreadId: selected, check: context });
+        const next = await bridge.loadPanel({ refresh, currentThreadId: selected, check: context || opening });
         if (stopped || ticket !== epoch) return;
+        lastCheckedAt = Date.now(); needsOpenCheck = false; contextDirty = false;
         applyContext();
         if (previous?.nativeId !== next.nativeId || previous?.index.rootId !== next.index.rootId) setFamilyEpoch(value => value + 1);
         lastPanel = next; setPanel(next); setTransitioning(false);
@@ -58,7 +74,11 @@ export function useSessionTree() {
           delay = Math.min(60000, delay * 2);
         }
       } finally {
-        if (!stopped && ticket === epoch) { busy = false; setLoading(false); schedule(); }
+        if (!stopped) {
+          busy = false; setLoading(false);
+          if (queued) { const next = queued; queued = undefined; void load(next); }
+          else schedule();
+        }
       }
     }
     controller.current = {
@@ -82,9 +102,10 @@ export function useSessionTree() {
     });
     const onVisibility = () => {
       window.clearTimeout(timer);
-      if (!document.hidden && inView) void load({ refresh: true, background: true });
+      if (!document.hidden && inView) void load({ opening: true, background: true });
+      else needsOpenCheck = true;
     };
-    const onFocus = () => { if (!document.hidden && inView && !busy) void load({ background: true }); };
+    const onFocus = () => { if (!document.hidden && inView && !busy && Date.now() - lastCheckedAt >= 5000) void load({ background: true }); };
     const onGlobals = (event: Event) => {
       const next = (event as CustomEvent<{ globals?: { locale?: string } }>).detail?.globals?.locale;
       if (next) applyContext({ locale: next });
@@ -92,8 +113,8 @@ export function useSessionTree() {
     const visibility = new IntersectionObserver(entries => {
       const previous = inView;
       inView = entries.some(entry => entry.isIntersecting);
-      if (!inView) window.clearTimeout(timer);
-      else if (!previous && !document.hidden) void load({ refresh: true, background: true });
+      if (!inView) { window.clearTimeout(timer); needsOpenCheck = true; }
+      else if (!previous && !document.hidden) void load({ opening: true, background: true });
     });
     visibility.observe(document.documentElement);
     document.addEventListener('visibilitychange', onVisibility);

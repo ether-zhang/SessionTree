@@ -1,8 +1,6 @@
 //! Codex storage adapter: local files, SQLite metadata, bounded excerpts and change detection.
 mod changes;
 pub mod preview;
-#[cfg(any(target_os = "macos", test))]
-mod probe;
 use anyhow::{Result, bail};
 use changes::{ChangeTracker, Changes, path_key};
 use chrono::{DateTime, SecondsFormat, Utc};
@@ -126,6 +124,8 @@ pub struct Metrics {
     pub metadata_reads: usize,
     pub body_reads: usize,
     pub database_reads: usize,
+    pub directory_scans: usize,
+    pub database_checks: usize,
 }
 pub struct CodexAdapter {
     home: PathBuf,
@@ -138,6 +138,9 @@ pub struct CodexAdapter {
     names_issues: Vec<Value>,
     state_issues: Vec<Value>,
     initialized: bool,
+    focused: Option<BTreeSet<String>>,
+    seeded: BTreeMap<String, Node>,
+    preview_budget: usize,
     pub metrics: Metrics,
 }
 
@@ -205,21 +208,8 @@ fn read_names(home: &Path) -> Result<BTreeMap<String, Value>> {
     }
     Ok(names)
 }
-fn read_state(home: &Path) -> Result<Vec<Value>> {
-    let mut paths = fs::read_dir(home)?
-        .filter_map(|entry| entry.ok())
-        .filter_map(|entry| {
-            let name = entry.file_name().to_str()?.to_owned();
-            let number = name
-                .strip_prefix("state_")?
-                .strip_suffix(".sqlite")?
-                .parse::<u64>()
-                .ok()?;
-            Some((number, entry.path()))
-        })
-        .collect::<Vec<_>>();
-    paths.sort_by_key(|entry| std::cmp::Reverse(entry.0));
-    let Some((_, path)) = paths.first() else {
+fn read_state(path: Option<&Path>) -> Result<Vec<Value>> {
+    let Some(path) = path else {
         return Ok(vec![]);
     };
     let db = Connection::open_with_flags(
@@ -267,26 +257,35 @@ fn read_state(home: &Path) -> Result<Vec<Value>> {
 }
 
 impl CodexAdapter {
-    pub fn observe(&mut self, native_ids: &[String]) {
-        #[cfg(target_os = "macos")]
-        {
-            let wanted: BTreeSet<_> = native_ids.iter().map(String::as_str).collect();
-            let files = self
-                .cache
-                .iter()
-                .filter(|(_, cached)| {
-                    cached
-                        .record
-                        .native_id
-                        .as_deref()
-                        .is_some_and(|id| wanted.contains(id))
-                })
-                .map(|(path, cached)| (path.clone(), cached.stamp.clone()))
-                .collect::<Vec<_>>();
-            self.changes.observe(files);
-        }
-        #[cfg(not(target_os = "macos"))]
-        let _ = native_ids;
+    pub fn begin_request(&mut self) {
+        self.preview_budget = 64 * 1024 * 1024;
+    }
+    pub fn seed(&mut self, index: &session_tree_core::Index) {
+        self.seeded = index
+            .nodes
+            .iter()
+            .filter(|node| node.agent == "codex" && !node.missing)
+            .filter_map(|node| node.native_id.clone().map(|id| (id, node.clone())))
+            .collect();
+    }
+    pub fn observe(&mut self, native_ids: &[String]) -> bool {
+        let wanted: BTreeSet<String> = native_ids.iter().cloned().collect();
+        let changed = self.focused.as_ref() != Some(&wanted);
+        let paths = self
+            .cache
+            .iter()
+            .filter(|(_, cached)| {
+                cached
+                    .record
+                    .native_id
+                    .as_ref()
+                    .is_some_and(|id| wanted.contains(id))
+            })
+            .map(|(path, _)| (path_key(path), path.clone()))
+            .collect();
+        self.focused = Some(wanted);
+        self.changes.focus(paths, changed);
+        changed
     }
     pub fn new(home: PathBuf) -> Self {
         let home_alias = home.clone();
@@ -304,13 +303,22 @@ impl CodexAdapter {
             names_issues: vec![],
             state_issues: vec![],
             initialized: false,
+            focused: None,
+            seeded: BTreeMap::new(),
+            preview_budget: usize::MAX,
             metrics: Metrics::default(),
         }
     }
     pub fn scan(&mut self, force: bool) -> Result<Option<(Vec<Node>, Vec<Value>)>> {
-        let Some(change) = self.changes.take(force) else {
+        self.metrics.database_checks += 1;
+        let Some(mut change) = self.changes.take(force)? else {
             return Ok(None);
         };
+        if self.focused.is_none() && force {
+            change.discover = true;
+            change.database = false;
+            change.full = true;
+        }
         match self.scan_changes(change) {
             Ok(value) => Ok(Some(value)),
             Err(error) => {
@@ -334,7 +342,7 @@ impl CodexAdapter {
         if change.state || !self.initialized {
             self.metrics.database_reads += 1;
             self.state_issues.clear();
-            match read_state(&self.home) {
+            match read_state(change.state_path.as_deref()) {
                 Ok(state)=>self.state=state,
                 Err(_)=>self.state_issues.push(json!({"kind":"state-unavailable","message":"会话数据库暂不可读，已使用本地会话文件和名称索引。"})),
             }
@@ -353,8 +361,11 @@ impl CodexAdapter {
             .collect();
         let mut files = if change.discover || !self.initialized {
             let mut files = BTreeMap::new();
-            discover(&self.home.join("sessions"), false, &mut files)?;
-            discover(&self.home.join("archived_sessions"), true, &mut files)?;
+            if !change.database {
+                self.metrics.directory_scans += 1;
+                discover(&self.home.join("sessions"), false, &mut files)?;
+                discover(&self.home.join("archived_sessions"), true, &mut files)?;
+            }
             files
         } else {
             self.files.clone()
@@ -368,6 +379,7 @@ impl CodexAdapter {
                 );
             }
         }
+        let mut ids_by_path = BTreeMap::new();
         for row in rows.values() {
             let value = text(row, "rollout_path");
             if value.is_empty() {
@@ -380,6 +392,16 @@ impl CodexAdapter {
                 .unwrap_or_else(|_| path.to_path_buf());
             let mut compressed = path.as_os_str().to_os_string();
             compressed.push(".zst");
+            let path = if known.contains(&path_key(Path::new(&compressed)))
+                || (!known.contains(&path_key(&path))
+                    && !path.exists()
+                    && Path::new(&compressed).exists())
+            {
+                PathBuf::from(compressed.clone())
+            } else {
+                path
+            };
+            ids_by_path.insert(path_key(&path), text(row, "id").to_owned());
             if !known.contains(&path_key(&path))
                 && !known.contains(&path_key(Path::new(&compressed)))
             {
@@ -387,8 +409,12 @@ impl CodexAdapter {
                 files.insert(path, truthy(&row["archived"]));
             }
         }
+        if change.database {
+            files.retain(|path, _| ids_by_path.contains_key(&path_key(path)));
+        }
         let mut records = BTreeMap::new();
         let mut seen = BTreeSet::new();
+        let mut preview_budget = self.preview_budget;
         for (path, archived) in &files {
             let previous = self.cache.get(path);
             let check =
@@ -407,8 +433,22 @@ impl CodexAdapter {
                 let meta = if unchanged || appended {
                     previous.unwrap().meta.clone()
                 } else {
-                    self.metrics.metadata_reads += 1;
-                    read_meta(path)?
+                    if let Some(saved) = ids_by_path
+                        .get(&path_key(path))
+                        .and_then(|id| self.seeded.get(id))
+                    {
+                        let parent = saved
+                            .parent_id
+                            .as_deref()
+                            .and_then(|id| id.strip_prefix("codex:"));
+                        json!({"id":saved.native_id,"timestamp":saved.extra.get("createdAt"),"cwd":saved.workspace,
+                            "agent_nickname":saved.title,"forked_from_id":if saved.relation.as_deref()==Some("fork"){parent}else{None},
+                            "parent_thread_id":if saved.relation.as_deref()==Some("spawn"){parent}else{None},
+                            "source":if saved.subagent{json!({"subagent":true})}else{json!("vscode")}})
+                    } else {
+                        self.metrics.metadata_reads += 1;
+                        read_meta(path)?
+                    }
                 };
                 let id = text(&meta, "id");
                 let row = rows.get(id).unwrap_or(&Value::Null);
@@ -433,7 +473,17 @@ impl CodexAdapter {
                 } else {
                     vec![]
                 };
-                if (!unchanged || !file_issues.is_empty()) && !is_subagent {
+                let focused = self.focused.as_ref().is_none_or(|ids| ids.contains(id));
+                let cost = if path.extension().is_some_and(|ext| ext == "zst") {
+                    64 * 1024 * 1024usize
+                } else {
+                    (stamp.size as usize)
+                        .saturating_mul(4)
+                        .min(15 * 1024 * 1024)
+                };
+                let needs_preview = !unchanged || (preview.is_none() && file_issues.is_empty());
+                if focused && needs_preview && !is_subagent && cost <= preview_budget {
+                    preview_budget = preview_budget.saturating_sub(cost);
                     let retry = !file_issues.is_empty();
                     file_issues.clear();
                     self.metrics.body_reads += 1;
@@ -470,11 +520,38 @@ impl CodexAdapter {
                     "updatedAt".into(),
                     json!(timestamp(row, "updated_at").or_else(|| stamp.modified.map(iso))),
                 );
-                let empty = Previews::default();
+                let saved_preview = self
+                    .seeded
+                    .get(id)
+                    .map(|saved| {
+                        let message = |role: &str| {
+                            saved
+                                .extra
+                                .get("latestMessages")
+                                .and_then(|v| v.get(role))
+                                .and_then(Value::as_str)
+                                .map(|text| preview::Message {
+                                    role: role.into(),
+                                    text: text.into(),
+                                })
+                        };
+                        let latest = saved.extra.get("latestMessage").and_then(|value| {
+                            Some(preview::Message {
+                                role: value["role"].as_str()?.into(),
+                                text: value["text"].as_str()?.into(),
+                            })
+                        });
+                        Previews {
+                            latest,
+                            user: message("user"),
+                            assistant: message("assistant"),
+                        }
+                    })
+                    .unwrap_or_default();
                 let previews = preview
                     .as_ref()
                     .map(|state| &state.previews)
-                    .unwrap_or(&empty);
+                    .unwrap_or(&saved_preview);
                 extra.insert("latestMessage".into(), json!(previews.latest));
                 extra.insert("latestMessages".into(),json!({"user":previews.user.as_ref().map(|message|&message.text),"assistant":previews.assistant.as_ref().map(|message|&message.text)}));
                 extra.insert("previewVersion".into(), json!(2));
@@ -555,7 +632,11 @@ impl CodexAdapter {
                 }
             }
         }
+        self.preview_budget = preview_budget;
         self.cache.retain(|path, _| seen.contains(path));
+        if let Some(ids) = self.focused.clone() {
+            self.observe(&ids.into_iter().collect::<Vec<_>>());
+        }
         for (id, row) in rows {
             if records.contains_key(&key(&id)) {
                 continue;
@@ -621,6 +702,75 @@ mod tests {
     use super::*;
     use std::io::Write;
     #[test]
+    fn foreground_uses_database_versions_and_only_reads_the_selected_log() {
+        let root = tempfile::tempdir().unwrap();
+        let sessions = root.path().join("sessions");
+        fs::create_dir(&sessions).unwrap();
+        let ids = [
+            "00000000-0000-4000-8000-000000000001",
+            "00000000-0000-4000-8000-000000000002",
+        ];
+        let paths = ids.map(|id| sessions.join(format!("rollout-{id}.jsonl")));
+        for (id, path) in ids.iter().zip(&paths) {
+            fs::write(path,json!({"type":"session_meta","payload":{"id":id}}).to_string()+"\n"+
+                &json!({"type":"event_msg","payload":{"type":"user_message","message":"initial"}}).to_string()+"\n").unwrap();
+        }
+        let db = Connection::open(root.path().join("state_5.sqlite")).unwrap();
+        db.execute_batch("PRAGMA journal_mode=WAL; CREATE TABLE threads(id TEXT, rollout_path TEXT, title TEXT, archived INTEGER);").unwrap();
+        for (id, path) in ids.iter().zip(&paths) {
+            db.execute(
+                "INSERT INTO threads VALUES (?1,?2,'fixture',0)",
+                rusqlite::params![id, path.to_str()],
+            )
+            .unwrap();
+        }
+        let mut adapter = CodexAdapter::new(root.path().into());
+        adapter.observe(&[ids[0].into()]);
+        adapter.scan(true).unwrap();
+        assert_eq!(adapter.metrics.directory_scans, 0);
+        assert_eq!(adapter.metrics.body_reads, 1);
+        let before = adapter.metrics.clone();
+        let mut writer = fs::OpenOptions::new().append(true).open(&paths[0]).unwrap();
+        writeln!(writer,"{}",json!({"type":"event_msg","payload":{"type":"agent_message","message":"committed update"}})).unwrap();
+        writer.flush().unwrap();
+        assert!(adapter.scan(false).unwrap().is_none());
+        assert_eq!(adapter.metrics.body_reads, before.body_reads);
+        assert_eq!(adapter.metrics.metadata_reads, before.metadata_reads);
+        db.execute("UPDATE threads SET title='changed' WHERE id=?1", [ids[0]])
+            .unwrap();
+        let (records, _) = adapter.scan(false).unwrap().unwrap();
+        assert_eq!(
+            records
+                .iter()
+                .find(|node| node.native_id.as_deref() == Some(ids[0]))
+                .unwrap()
+                .extra["latestMessages"]["assistant"],
+            "committed update"
+        );
+        assert_eq!(adapter.metrics.body_reads, before.body_reads + 1);
+        assert_eq!(adapter.metrics.directory_scans, 0);
+        let cached = adapter.cache.get_mut(&paths[0]).unwrap();
+        cached.preview = None;
+        cached
+            .issues
+            .push(json!({"kind":"preview-unavailable","id":key(ids[0])}));
+        let reads = adapter.metrics.body_reads;
+        db.execute(
+            "UPDATE threads SET title='unrelated change' WHERE id=?1",
+            [ids[1]],
+        )
+        .unwrap();
+        adapter.scan(false).unwrap();
+        assert_eq!(
+            adapter.metrics.body_reads, reads,
+            "An unchanged failed preview must not be retried."
+        );
+        let before = adapter.metrics.clone();
+        assert!(adapter.scan(false).unwrap().is_none());
+        assert_eq!(adapter.metrics.body_reads, before.body_reads);
+        assert_eq!(adapter.metrics.metadata_reads, before.metadata_reads);
+    }
+    #[test]
     fn warm_checks_skip_content_reads_and_append_keeps_authors() {
         let directory = tempfile::tempdir().unwrap();
         let sessions = directory.path().join("sessions");
@@ -677,18 +827,12 @@ mod tests {
         let completed =
             preview::read_previews(&path, Some(&next), &fs::metadata(&path).unwrap()).unwrap();
         assert_eq!(completed.previews.user.unwrap().text, "完整问题");
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
-        loop {
-            if let Some((records, _)) = adapter.scan(false).unwrap() {
-                assert_eq!(records[0].extra["latestMessages"]["user"], "完整问题");
-                break;
-            }
-            assert!(
-                std::time::Instant::now() < deadline,
-                "Visible log metadata did not detect the appended record."
-            );
-            std::thread::sleep(std::time::Duration::from_millis(25));
-        }
+        assert!(
+            adapter.scan(false).unwrap().is_none(),
+            "Legacy profiles must not poll the filesystem."
+        );
+        let (records, _) = adapter.scan(true).unwrap().unwrap();
+        assert_eq!(records[0].extra["latestMessages"]["user"], "完整问题");
         drop(file);
         let replacement = sessions.join("replacement.tmp");
         let new_id = "00000000-0000-4000-8000-000000000002";
@@ -704,6 +848,9 @@ mod tests {
         let (records, _) = adapter.scan(true).unwrap().unwrap();
         assert_eq!(records.len(), 1);
         assert_eq!(records[0].native_id.as_deref(), Some(new_id));
+        assert!(records[0].extra["latestMessages"]["user"].is_null());
+        adapter.observe(&[new_id.to_owned()]);
+        let (records, _) = adapter.scan(false).unwrap().unwrap();
         assert_eq!(records[0].extra["latestMessages"]["user"], "新文件");
     }
 }

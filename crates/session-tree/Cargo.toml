@@ -13,3 +13,6 @@ serde_json.workspace = true
 sha2.workspace = true
 tempfile.workspace = true
 base64 = "0.22"
+
+[dev-dependencies]
+rusqlite = { version = "0.41", features = ["bundled"] }

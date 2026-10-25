@@ -112,8 +112,14 @@ pub fn create_index(records: Vec<Node>, mut issues: Vec<Value>) -> Result<Index>
 }
 
 pub fn family(index: &Index, current: &str) -> Index {
-    let mut result = index.clone();
-    result.current_id = Some(current.into());
+    let mut result = Index {
+        version: index.version,
+        generated_at: index.generated_at.clone(),
+        nodes: vec![],
+        issues: vec![],
+        root_id: None,
+        current_id: Some(current.into()),
+    };
     let by_id: BTreeMap<_, _> = index
         .nodes
         .iter()
@@ -148,12 +154,18 @@ pub fn family(index: &Index, current: &str) -> Index {
         }
     }
     result.root_id = Some(root.id.clone());
-    result
+    result.nodes = index
         .nodes
-        .retain(|node| selected.contains(node.id.as_str()));
-    result
+        .iter()
+        .filter(|node| selected.contains(node.id.as_str()))
+        .cloned()
+        .collect();
+    result.issues = index
         .issues
-        .retain(|issue| issue["id"].as_str().is_none_or(|id| selected.contains(id)));
+        .iter()
+        .filter(|issue| issue["id"].as_str().is_none_or(|id| selected.contains(id)))
+        .cloned()
+        .collect();
     result
 }
 

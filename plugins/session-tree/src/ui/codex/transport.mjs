@@ -55,7 +55,7 @@ export class AppBridge {
   }
   initialize() {
     this.ready ??= this.request('ui/initialize', {
-      protocolVersion: '2026-01-26', appInfo: { name: 'SessionTree', version: '0.7.0' },
+      protocolVersion: '2026-01-26', appInfo: { name: 'SessionTree', version: '0.7.1' },
       appCapabilities: { availableDisplayModes: this.displayModes },
     }).then(context => {
       this.post({ method: 'ui/notifications/initialized' });
@@ -87,6 +87,7 @@ export class AppBridge {
   async loadPanel({ refresh = false, currentThreadId, check = false } = {}) {
     await this.initialize();
     const args = { refresh };
+    if (!refresh && (!this.panel || check)) args.open_check = true;
     if (currentThreadId) args.current_thread_id = currentThreadId;
     if (!refresh && !check && this.panel?.revision) args.since_revision = this.panel.revision;
     if (refresh || currentThreadId) this.discardOpeningResult();

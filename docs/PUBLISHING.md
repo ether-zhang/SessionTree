@@ -2,7 +2,7 @@
 
 Publisher handle: ether-zhang. License: MIT. The creator selected free distribution, no payments, and all countries supported by the destination directory.
 
-## Native 0.7.0 preview
+## Native 0.7.1 preview
 
 The `codex/rust-backend` branch retains the React frontend and replaces the Node service with Rust. CI builds and verifies separate Windows x64, Apple Silicon Mac and Intel Mac packages. Each contains one native program, icons, manifests and licenses; no Node runtime, source tree or development dependencies are shipped. The public stable release and marketplace remain on 0.5.8. Native desktop import/rendering must still be accepted before promotion. See [development and rollback](DEVELOPMENT.md).
 

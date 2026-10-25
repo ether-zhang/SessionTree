@@ -142,6 +142,9 @@
           "refresh": {
             "type": "boolean"
           },
+          "open_check": {
+            "type": "boolean"
+          },
           "since_revision": {
             "type": "string",
             "maxLength": 128

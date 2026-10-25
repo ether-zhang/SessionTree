@@ -39,7 +39,7 @@ export interface HostContext {
   [key: string]: unknown;
 }
 
-export interface LoadOptions { refresh?: boolean; background?: boolean; context?: boolean }
+export interface LoadOptions { refresh?: boolean; background?: boolean; context?: boolean; opening?: boolean }
 export interface Bridge {
   closed?: boolean;
   locale?: string;

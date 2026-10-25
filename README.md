@@ -10,6 +10,8 @@ For Codex desktop on Windows x64. The package includes its runtime.
 
 The `codex/rust-backend` branch previews a native Rust backend with the React + TypeScript UI. It builds separate Windows x64, Apple Silicon Mac and Intel Mac ZIPs without Node runtimes. See the [development guide](docs/DEVELOPMENT.md). The installation links below remain on stable 0.5.8 pending native desktop acceptance.
 
+The 0.7.1 preview removes filesystem watchers and background scans. Opening checks the data once; while visible, the panel checks the database at a low frequency and reads only needed conversation excerpts.
+
 Open **Plugins（插件）** in the **left sidebar**, then click **Add（添加）** in the **upper-right corner**. Choose either method below.
 
 **Option 1 — Upload the plugin ZIP**
