@@ -6,21 +6,21 @@ Publisher handle: ether-zhang. License: MIT. The creator selected free distribut
 
 The `codex/rust-backend` branch retains the React frontend and replaces the Node service with Rust. CI builds and verifies separate Windows x64, Apple Silicon Mac and Intel Mac packages. Each contains one native program, icons, manifests and licenses; no Node runtime, source tree or development dependencies are shipped. The public stable release and marketplace remain on 0.5.8. Native desktop import/rendering must still be accepted before promotion. See [development and rollback](DEVELOPMENT.md).
 
-For future Git distribution, copy each generated marketplace payload to its platform branch (`marketplace-windows-x64`, `marketplace-macos-arm64`, or `marketplace-macos-x64`). Users add `ether-zhang/SessionTree`, select that Git ref, and set sparse paths to `.agents/plugins` and `plugins/session-tree`, one per line. This avoids fetching older runtime blobs from other branches. All branches retain the same plugin identity. These release branches are planned, not published by building a candidate. Git installation runs precompiled files and does not invoke Cargo. ZIP import uses the corresponding platform's `-plugin.zip`.
+The [v0.7.1 preview release](https://github.com/ether-zhang/SessionTree/releases/tag/v0.7.1) provides plugin ZIPs and checksums for all three platforms. Git installation uses `codex/marketplace-windows-x64`, `codex/marketplace-macos-arm64`, or `codex/marketplace-macos-x64`. Users add `ether-zhang/SessionTree`, select the matching Git ref, and set sparse paths to `.agents/plugins` and `plugins/session-tree`, one per line. All branches retain the same plugin identity and use precompiled files without invoking Cargo. These payloads come from the verified [native build](https://github.com/ether-zhang/SessionTree/actions/runs/40167614124) at source commit 3edd5fd. Native desktop UI acceptance remains separate from the published package and native startup checks.
 
 ## GitHub distribution
 
-The source repository is [ether-zhang/SessionTree](https://github.com/ether-zhang/SessionTree). The branches are main for source and marketplace for the Windows x64 package with its runtime. A source push is separate from publishing to OpenAI's Plugin Directory.
+The source repository is [ether-zhang/SessionTree](https://github.com/ether-zhang/SessionTree). Native source lives on codex/rust-backend; main retains the previous source with the current installation README. The old marketplace branch contains the stable Windows 0.5.8 package; the three codex/marketplace-* branches contain native 0.7.1 previews. GitHub distribution is separate from publishing to OpenAI's Plugin Directory.
 
-For normal installation, use the client's left-sidebar **Plugins** page and upper-right **Add** menu, then choose **Upload plugin archive** or **Add plugin marketplace** as shown in [the README](../README.md). The creator selected both GUI installation paths on 2026-10-24. GitHub Release v0.5.8 provides the single-plugin ZIP and SHA-256 file.
+For normal installation, use the client's left-sidebar **Plugins** page and upper-right **Add** menu, then choose **Upload plugin archive** or **Add plugin marketplace** as shown in [the README](../README.md). The creator selected both GUI installation paths on 2026-10-24. GitHub Release v0.7.1 provides the three platform ZIPs and SHA-256 files; v0.5.8 is retained as the previous Windows release.
 
 The equivalent command-line alternative is:
 
 ~~~powershell
-codex plugin marketplace add ether-zhang/SessionTree --ref marketplace
+codex plugin marketplace add ether-zhang/SessionTree --ref codex/marketplace-windows-x64 --sparse .agents/plugins --sparse plugins/session-tree
 ~~~
 
-After adding the source, choose SessionTree from the **SessionTree (Windows x64)** source in Codex and use the native Install action.
+Choose the matching platform ref on macOS. After adding the source, choose SessionTree from the **SessionTree (your platform)** source in Codex and use the native Install action.
 
 ## Official directory preparation
 

@@ -87,15 +87,15 @@ Alternatively, unpack the -marketplace.zip and add its marketplace root as a loc
 codex plugin marketplace add ./dist/session-tree-0.7.1-windows-x64
 ~~~
 
-Git installation uses precompiled release payloads. The planned release layout is:
+Git installation uses the published, precompiled 0.7.1 preview payloads:
 
 | Device | Source | Git ref |
 | --- | --- | --- |
-| Windows x64 | ether-zhang/SessionTree | marketplace-windows-x64 |
-| Apple Silicon Mac | ether-zhang/SessionTree | marketplace-macos-arm64 |
-| Intel Mac | ether-zhang/SessionTree | marketplace-macos-x64 |
+| Windows x64 | ether-zhang/SessionTree | codex/marketplace-windows-x64 |
+| Apple Silicon Mac | ether-zhang/SessionTree | codex/marketplace-macos-arm64 |
+| Intel Mac | ether-zhang/SessionTree | codex/marketplace-macos-x64 |
 
-These platform release branches are not published by building a candidate. The currently published marketplace branch and v0.5.8 release remain Windows-only. When the platform branches are published, users choose the matching Git ref once; Codex runs its prebuilt binary and does not compile the source or choose another architecture automatically. All platform branches keep the same plugin identity.
+Users choose the matching Git ref once; Codex runs its prebuilt binary and does not compile the source or choose another architecture automatically. All platform branches keep the same plugin identity. The [v0.7.1 preview release](https://github.com/ether-zhang/SessionTree/releases/tag/v0.7.1) also provides each platform's plugin ZIP and checksum. The old marketplace branch and stable v0.5.8 release remain available for Windows rollback. Publishing the Mac packages does not establish native desktop UI acceptance.
 
 For those platform refs, enter both **.agents/plugins** and **plugins/session-tree** in **Sparse paths**, one per line. The current importer performs a full Git clone when that field is empty; sparse import avoids fetching old runtime blobs and unrelated branch contents. The isolated release check exercises this layout, including a default branch without the marketplace catalog.
 
