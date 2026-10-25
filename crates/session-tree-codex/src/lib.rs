@@ -749,7 +749,11 @@ mod tests {
         );
         assert_eq!(adapter.metrics.body_reads, before.body_reads + 1);
         assert_eq!(adapter.metrics.directory_scans, 0);
-        let cached = adapter.cache.get_mut(&paths[0]).unwrap();
+        let cached = adapter
+            .cache
+            .values_mut()
+            .find(|cached| cached.record.native_id.as_deref() == Some(ids[0]))
+            .unwrap();
         cached.preview = None;
         cached
             .issues
