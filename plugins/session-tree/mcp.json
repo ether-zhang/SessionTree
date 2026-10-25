@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "session-tree": {
+      "type": "stdio",
+      "command": "./bin/session-tree",
+      "cwd": "${PLUGIN_DATA}",
+      "args": [],
+      "env": {
+        "SESSION_TREE_DATA": "${PLUGIN_DATA}"
+      }
+    }
+  }
+}
