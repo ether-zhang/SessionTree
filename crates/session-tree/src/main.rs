@@ -34,10 +34,12 @@ fn signature(value: &Value) -> String {
     let bytes = serde_json::to_vec(value).expect("Serializable JSON");
     format!("{:x}", Sha256::digest(bytes))
 }
-fn visible_nodes(index: &Index) -> Value {
+fn visible_nodes(index: &Index, track_activity: bool) -> Value {
     let mut nodes = serde_json::to_value(&index.nodes).unwrap();
     for node in nodes.as_array_mut().unwrap() {
-        node.as_object_mut().unwrap().remove("updatedAt");
+        if !track_activity {
+            node.as_object_mut().unwrap().remove("updatedAt");
+        }
     }
     nodes
 }
@@ -46,6 +48,7 @@ struct Service {
     path: PathBuf,
     snapshot: Option<Arc<Index>>,
     signature: Option<String>,
+    track_activity: bool,
 }
 impl Service {
     fn observe_index(&mut self, index: &Index) -> bool {
@@ -78,7 +81,7 @@ impl Service {
         {
             self.adapter.seed(&index);
             self.signature = Some(signature(
-                &json!({"nodes":visible_nodes(&index),"issues":index.issues}),
+                &json!({"nodes":visible_nodes(&index, self.track_activity),"issues":index.issues}),
             ));
             self.snapshot = Some(Arc::new(index));
         }
@@ -90,7 +93,9 @@ impl Service {
         }
         let (records, issues) = scan.context("No initial index")?;
         let index = create_index(records, issues)?;
-        let next = signature(&json!({"nodes":visible_nodes(&index),"issues":index.issues}));
+        let next = signature(
+            &json!({"nodes":visible_nodes(&index, self.track_activity),"issues":index.issues}),
+        );
         if self.signature.as_ref() == Some(&next)
             && let Some(index) = &self.snapshot
         {
@@ -253,7 +258,12 @@ fn native_id(value: &Value) -> Result<String> {
         .context("客户端未提供有效的对话 ID。")?;
     Ok(value.to_lowercase())
 }
-fn panel_snapshot(index: &Index, meta: &Value, selected: &Value) -> Result<Value> {
+fn panel_snapshot(
+    index: &Index,
+    meta: &Value,
+    selected: &Value,
+    track_activity: bool,
+) -> Result<Value> {
     let index = conversation_index(index);
     let host = if meta["threadId"].is_null() {
         None
@@ -289,7 +299,7 @@ fn panel_snapshot(index: &Index, meta: &Value, selected: &Value) -> Result<Value
         .map(|id| family(&index, &key(id)))
         .unwrap_or(index);
     let revision = signature(
-        &json!({"mode":mode,"nativeId":native,"rootId":family.root_id,"nodes":visible_nodes(&family),"issues":family.issues}),
+        &json!({"mode":mode,"nativeId":native,"rootId":family.root_id,"nodes":visible_nodes(&family, track_activity),"issues":family.issues}),
     );
     let mut panel = json!({"version":1,"mode":mode,"nativeId":native,"index":family,"revision":&revision[..32]});
     if native.is_some() && panel["index"]["rootId"].is_null() {
@@ -381,14 +391,24 @@ impl Server {
             {
                 panel.clone()
             } else {
-                panel_snapshot(&index, meta, &args["current_thread_id"])?
+                panel_snapshot(
+                    &index,
+                    meta,
+                    &args["current_thread_id"],
+                    self.service.track_activity,
+                )?
             };
             let mut selected: Index = serde_json::from_value(panel["index"].clone())?;
             if panel["mode"] != "choose" && self.service.observe_index(&selected) {
                 let fresh = self.service.refresh(false)?;
                 if !Arc::ptr_eq(&fresh, &index) {
                     index = fresh;
-                    panel = panel_snapshot(&index, meta, &args["current_thread_id"])?;
+                    panel = panel_snapshot(
+                        &index,
+                        meta,
+                        &args["current_thread_id"],
+                        self.service.track_activity,
+                    )?;
                     selected = serde_json::from_value(panel["index"].clone())?;
                 }
             }
@@ -604,7 +624,9 @@ fn main() -> Result<()> {
         .first()
         .is_some_and(|arg| arg == "--help" || arg == "help")
     {
-        println!("SessionTree\n  session-tree [mcp|index] [--codex-home PATH] [--data-dir PATH]");
+        println!(
+            "SessionTree\n  session-tree [mcp|index] [--codex-home PATH] [--data-dir PATH] [--track-activity]"
+        );
         return Ok(());
     }
     let command = if args
@@ -630,8 +652,13 @@ fn main() -> Result<()> {
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(".session-tree"));
     let (mut home, mut data) = (home, data);
+    let mut track_activity = false;
     let mut args = args.into_iter();
     while let Some(option) = args.next() {
+        if option == "--track-activity" {
+            track_activity = true;
+            continue;
+        }
         let value = args
             .next()
             .filter(|value| !value.starts_with("--"))
@@ -649,6 +676,7 @@ fn main() -> Result<()> {
         path: data.join("session-tree.index.json"),
         snapshot: None,
         signature: None,
+        track_activity,
     };
     let icons = json!([{"src":format!("data:image/svg+xml;base64,{}",STANDARD.encode(ICON)),"mimeType":"image/svg+xml"}]);
     let mut server = Server {
@@ -698,6 +726,7 @@ mod tests {
             path: root.path().join("data/index.json"),
             snapshot: None,
             signature: None,
+            track_activity: false,
         };
         let mut server = Server {
             cached_panel: None,
@@ -758,6 +787,7 @@ mod tests {
             path: path.clone(),
             snapshot: None,
             signature: None,
+            track_activity: false,
         };
         let first = service.refresh(false).unwrap();
         service.observe_index(&first);

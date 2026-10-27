@@ -1,0 +1,11 @@
+{
+  "extension.description": "檔案總管中的對話分支樹，初版支援 Codex，之後可接入其他 agent。",
+  "command.refresh": "重新整理對話",
+  "command.showAll": "顯示所有本機對話",
+  "command.showWorkspace": "僅顯示目前工作區對話",
+  "command.selectAgent": "選擇 Agent",
+  "command.copyId": "複製對話 ID",
+  "setting.agent": "SessionTree 顯示對話所用的 Agent。此預覽版支援 Codex。",
+  "setting.scope": "顯示目前工作區相關的完整對話樹，或所有本機對話樹。",
+  "setting.codexHome": "Codex 資料目錄。留空使用擴充功能所在主機的 CODEX_HOME 或 ~/.codex。這是本機目錄，不是 API 設定。"
+}

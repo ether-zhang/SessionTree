@@ -1,0 +1,63 @@
+{
+  "name": "session-tree",
+  "displayName": "SessionTree",
+  "description": "%extension.description%",
+  "version": "0.1.1",
+  "publisher": "ether-zhang",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/ether-zhang/SessionTree.git", "directory": "extensions/vscode" },
+  "engines": { "vscode": "^1.96.0" },
+  "categories": ["Other"],
+  "keywords": ["sessions", "conversation", "codex", "tree"],
+  "icon": "assets/session-tree.png",
+  "main": "./out/extension.js",
+  "l10n": "./l10n",
+  "extensionKind": ["workspace"],
+  "activationEvents": ["onView:sessionTree.explorer"],
+  "capabilities": {
+    "untrustedWorkspaces": { "supported": false },
+    "virtualWorkspaces": { "supported": false }
+  },
+  "contributes": {
+    "views": {
+      "explorer": [{ "id": "sessionTree.explorer", "name": "SessionTree", "visibility": "collapsed" }]
+    },
+    "commands": [
+      { "command": "sessionTree.refresh", "title": "%command.refresh%", "category": "SessionTree", "icon": "$(refresh)" },
+      { "command": "sessionTree.showAll", "title": "%command.showAll%", "category": "SessionTree", "icon": "$(globe)" },
+      { "command": "sessionTree.showWorkspace", "title": "%command.showWorkspace%", "category": "SessionTree", "icon": "$(folder)" },
+      { "command": "sessionTree.selectAgent", "title": "%command.selectAgent%", "category": "SessionTree", "icon": "$(hubot)" },
+      { "command": "sessionTree.copyId", "title": "%command.copyId%", "category": "SessionTree", "icon": "$(copy)" }
+    ],
+    "menus": {
+      "view/title": [
+        { "command": "sessionTree.refresh", "when": "view == sessionTree.explorer", "group": "navigation@1" },
+        { "command": "sessionTree.showAll", "when": "view == sessionTree.explorer && config.sessionTree.scope == workspace", "group": "navigation@2" },
+        { "command": "sessionTree.showWorkspace", "when": "view == sessionTree.explorer && config.sessionTree.scope == all", "group": "navigation@2" },
+        { "command": "sessionTree.selectAgent", "when": "view == sessionTree.explorer && sessionTree.multipleAgents", "group": "navigation@3" }
+      ],
+      "view/item/context": [{ "command": "sessionTree.copyId", "when": "view == sessionTree.explorer && viewItem == sessionTree.session", "group": "inline" }],
+      "commandPalette": [{ "command": "sessionTree.copyId", "when": "false" }]
+    },
+    "configuration": {
+      "title": "SessionTree",
+      "properties": {
+        "sessionTree.agent": { "type": "string", "enum": ["codex"], "default": "codex", "description": "%setting.agent%" },
+        "sessionTree.scope": { "type": "string", "enum": ["workspace", "all"], "default": "workspace", "description": "%setting.scope%" },
+        "sessionTree.codexHome": { "type": "string", "default": "", "scope": "machine", "description": "%setting.codexHome%" }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "npm run build && node --test test/*.test.cjs",
+    "package": "node scripts/package.mjs",
+    "preview": "node scripts/preview.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.0",
+    "@types/vscode": "1.96.0",
+    "@vscode/vsce": "4.0.0",
+    "typescript": "5.9.3"
+  }
+}

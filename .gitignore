@@ -4,6 +4,10 @@ node_modules/
 target/
 plugins/session-tree/bin/
 dist/
+extensions/vscode/out/
+extensions/vscode/bin/
+extensions/vscode/assets/
+extensions/vscode/THIRD_PARTY_NOTICES.txt
 .agents/
 .codex/
 .aws/

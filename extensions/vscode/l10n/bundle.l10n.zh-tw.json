@@ -1,0 +1,9 @@
+{
+  "Source session unavailable": "來源對話無法使用",
+  "Archived": "已封存",
+  "{0} sessions": "{0} 個對話",
+  "No sessions in this workspace. Use the globe button to show all local sessions.": "此工作區暫無對話。按一下地球按鈕可查看所有本機對話。",
+  "No local sessions found. You can set the Codex data folder in SessionTree settings.": "暫無本機對話。可在 SessionTree 設定中指定 Codex 資料目錄。",
+  "Unable to read sessions. Refresh to retry, or check the Codex data folder in settings.": "無法讀取對話。請重新整理，或在設定中檢查 Codex 資料目錄。",
+  "Select an agent": "選擇 Agent"
+}

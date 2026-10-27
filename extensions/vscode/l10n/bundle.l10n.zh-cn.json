@@ -1,0 +1,9 @@
+{
+  "Source session unavailable": "来源会话不可用",
+  "Archived": "已归档",
+  "{0} sessions": "{0} 个会话",
+  "No sessions in this workspace. Use the globe button to show all local sessions.": "此工作区暂无会话。点击地球按钮可查看所有本地会话。",
+  "No local sessions found. You can set the Codex data folder in SessionTree settings.": "暂无本地会话。可在 SessionTree 设置中指定 Codex 数据目录。",
+  "Unable to read sessions. Refresh to retry, or check the Codex data folder in settings.": "无法读取会话。请刷新重试，或在设置中检查 Codex 数据目录。",
+  "Select an agent": "选择 Agent"
+}
