@@ -118,6 +118,10 @@ struct Cached {
     record: Node,
     issues: Vec<Value>,
 }
+struct CachedFirstReply {
+    stamp: Stamp,
+    reply: preview::FirstReply,
+}
 #[derive(Default, Clone, Debug, PartialEq)]
 pub struct Metrics {
     pub scans: usize,
@@ -132,6 +136,7 @@ pub struct CodexAdapter {
     home_alias: PathBuf,
     changes: ChangeTracker,
     cache: BTreeMap<PathBuf, Cached>,
+    first_replies: BTreeMap<String, CachedFirstReply>,
     files: BTreeMap<PathBuf, bool>,
     names: BTreeMap<String, Value>,
     state: Vec<Value>,
@@ -297,6 +302,7 @@ impl CodexAdapter {
             home,
             home_alias,
             cache: BTreeMap::new(),
+            first_replies: BTreeMap::new(),
             files: BTreeMap::new(),
             names: BTreeMap::new(),
             state: vec![],
@@ -309,6 +315,51 @@ impl CodexAdapter {
             metrics: Metrics::default(),
         }
     }
+    pub fn first_reply(&mut self, id: &str) -> preview::FirstReply {
+        if !valid_id(id) {
+            return preview::FirstReply::Unavailable;
+        }
+        let path = self
+            .cache
+            .iter()
+            .filter(|(_, cached)| {
+                !cached.record.subagent && cached.record.native_id.as_deref() == Some(id)
+            })
+            .max_by_key(|(_, cached)| cached.stamp.modified)
+            .map(|(path, _)| path.clone());
+        let Some(path) = path else {
+            return preview::FirstReply::Unavailable;
+        };
+        let Ok(info) = fs::metadata(&path) else {
+            return preview::FirstReply::Unavailable;
+        };
+        let stamp = Stamp::new(&info, &path);
+        if let Some(cached) = self.first_replies.get(id)
+            && (cached.stamp == stamp
+                || (matches!(cached.reply, preview::FirstReply::Available { .. })
+                    && cached.stamp.identity == stamp.identity
+                    && stamp.size > cached.stamp.size))
+        {
+            return cached.reply.clone();
+        }
+        self.metrics.body_reads += 1;
+        let reply = preview::read_first_reply(&path).unwrap_or(preview::FirstReply::Unavailable);
+        if matches!(reply, preview::FirstReply::Unavailable) {
+            return reply;
+        }
+        if self.first_replies.len() >= 64 && !self.first_replies.contains_key(id) {
+            self.first_replies.pop_first();
+        }
+        self.first_replies.insert(
+            id.into(),
+            CachedFirstReply {
+                stamp,
+                reply: reply.clone(),
+            },
+        );
+        reply
+    }
+
     pub fn scan(&mut self, force: bool) -> Result<Option<(Vec<Node>, Vec<Value>)>> {
         self.metrics.database_checks += 1;
         let Some(mut change) = self.changes.take(force)? else {
@@ -701,6 +752,49 @@ fn insert_record(records: &mut BTreeMap<String, Node>, record: Node) {
 mod tests {
     use super::*;
     use std::io::Write;
+    #[test]
+    fn first_reply_reads_only_the_hovered_session_and_reuses_it_after_append() {
+        let root = tempfile::tempdir().unwrap();
+        let home = root.path().join("profile");
+        fs::create_dir_all(home.join("sessions")).unwrap();
+        let id = "00000000-0000-4000-8000-000000000001";
+        let path = home.join("sessions/rollout-fixture.jsonl");
+        fs::write(&path, json!({"type":"session_meta","payload":{"id":id}}).to_string()+"\n"+
+            &json!({"type":"event_msg","payload":{"type":"agent_message","message":"first reply"}}).to_string()+"\n").unwrap();
+        let db = Connection::open(home.join("state_5.sqlite")).unwrap();
+        db.execute_batch("CREATE TABLE threads(id TEXT,rollout_path TEXT,title TEXT);")
+            .unwrap();
+        db.execute(
+            "INSERT INTO threads VALUES (?1,?2,'fixture')",
+            rusqlite::params![id, path.to_str()],
+        )
+        .unwrap();
+        let mut adapter = CodexAdapter::new(home);
+        adapter.observe(&[]);
+        adapter.scan(true).unwrap();
+        assert_eq!(adapter.metrics.body_reads, 0);
+        let expected = preview::FirstReply::Available {
+            text: "first reply".into(),
+            user: None,
+        };
+        assert_eq!(adapter.first_reply(id), expected);
+        assert_eq!(adapter.metrics.body_reads, 1);
+        let mut writer = fs::OpenOptions::new().append(true).open(&path).unwrap();
+        writeln!(
+            writer,
+            "{}",
+            json!({"type":"event_msg","payload":{"type":"agent_message","message":"newest reply"}})
+        )
+        .unwrap();
+        writer.flush().unwrap();
+        assert_eq!(adapter.first_reply(id), expected);
+        assert_eq!(adapter.metrics.body_reads, 1);
+        assert_eq!(
+            adapter.first_reply("00000000-0000-4000-8000-000000000099"),
+            preview::FirstReply::Unavailable
+        );
+        assert_eq!(adapter.metrics.body_reads, 1);
+    }
     #[test]
     fn foreground_uses_database_versions_and_only_reads_the_selected_log() {
         let root = tempfile::tempdir().unwrap();

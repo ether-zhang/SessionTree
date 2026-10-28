@@ -1,11 +1,11 @@
 {
   "extension.description": "资源管理器中的会话分叉树，首版支持 Codex，后续可接入其他 agent。",
   "command.refresh": "刷新会话",
-  "command.showAll": "显示所有本地会话",
-  "command.showWorkspace": "仅显示当前工作区会话",
+  "command.openTree": "查看会话树",
+  "command.openConversation": "在 Agent 中打开会话",
+  "command.backToList": "返回会话列表",
   "command.selectAgent": "选择 Agent",
   "command.copyId": "复制会话 ID",
   "setting.agent": "SessionTree 展示会话所用的 Agent。此预览版支持 Codex。",
-  "setting.scope": "展示当前工作区相关的完整会话树，或所有本地会话树。",
   "setting.codexHome": "Codex 数据目录。留空使用扩展所在主机的 CODEX_HOME 或 ~/.codex。这是本地目录，不是 API 设置。"
 }

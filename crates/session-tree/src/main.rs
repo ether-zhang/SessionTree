@@ -514,6 +514,26 @@ impl Server {
                 "capabilities":{"tools":{},"resources":{}},"serverInfo":{"name":"session-tree","version":VERSION,"icons":self.icons},"instructions":INSTRUCTIONS}),
             ),
             "ping" => Ok(json!({})),
+            "sessionTree/firstReply" => {
+                let id = native_id(&params["threadId"])
+                    .map_err(|_| (-32602, "Invalid conversation ID".into()))?;
+                let known = self.service.snapshot.as_ref().is_some_and(|index| {
+                    index.nodes.iter().any(|node| {
+                        node.agent == "codex"
+                            && !node.missing
+                            && !node.subagent
+                            && node.native_id.as_deref() == Some(id.as_str())
+                    })
+                });
+                if !known {
+                    return Err((
+                        -32602,
+                        "Read the conversation index before requesting its reply".into(),
+                    ));
+                }
+                Ok(serde_json::to_value(self.service.adapter.first_reply(&id))
+                    .expect("Serializable reply"))
+            }
             "tools/list" => {
                 let mut tools = self.catalog["tools"].clone();
                 for tool in tools.as_array_mut().unwrap() {

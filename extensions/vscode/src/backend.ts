@@ -26,7 +26,7 @@ export class BackendClient {
 
   async initialize(): Promise<void> {
     await this.request('initialize', { protocolVersion: '2025-11-25', capabilities: {},
-      clientInfo: { name: 'session-tree-vscode', version: '0.1.1' } });
+      clientInfo: { name: 'session-tree-vscode', version: '0.1.5' } });
     this.child?.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n');
   }
 

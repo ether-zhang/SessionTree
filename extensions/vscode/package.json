@@ -2,7 +2,7 @@
   "name": "session-tree",
   "displayName": "SessionTree",
   "description": "%extension.description%",
-  "version": "0.1.1",
+  "version": "0.1.7",
   "publisher": "ether-zhang",
   "license": "MIT",
   "repository": { "type": "git", "url": "https://github.com/ether-zhang/SessionTree.git", "directory": "extensions/vscode" },
@@ -20,30 +20,33 @@
   },
   "contributes": {
     "views": {
-      "explorer": [{ "id": "sessionTree.explorer", "name": "SessionTree", "visibility": "collapsed" }]
+      "explorer": [
+        { "id": "sessionTree.explorer", "name": "SessionTree", "type": "webview", "visibility": "collapsed" }
+      ]
     },
     "commands": [
       { "command": "sessionTree.refresh", "title": "%command.refresh%", "category": "SessionTree", "icon": "$(refresh)" },
-      { "command": "sessionTree.showAll", "title": "%command.showAll%", "category": "SessionTree", "icon": "$(globe)" },
-      { "command": "sessionTree.showWorkspace", "title": "%command.showWorkspace%", "category": "SessionTree", "icon": "$(folder)" },
+      { "command": "sessionTree.openTree", "title": "%command.openTree%", "category": "SessionTree" },
+      { "command": "sessionTree.openConversation", "title": "%command.openConversation%", "category": "SessionTree" },
+      { "command": "sessionTree.backToList", "title": "%command.backToList%", "category": "SessionTree", "icon": "$(arrow-left)" },
       { "command": "sessionTree.selectAgent", "title": "%command.selectAgent%", "category": "SessionTree", "icon": "$(hubot)" },
       { "command": "sessionTree.copyId", "title": "%command.copyId%", "category": "SessionTree", "icon": "$(copy)" }
     ],
     "menus": {
       "view/title": [
         { "command": "sessionTree.refresh", "when": "view == sessionTree.explorer", "group": "navigation@1" },
-        { "command": "sessionTree.showAll", "when": "view == sessionTree.explorer && config.sessionTree.scope == workspace", "group": "navigation@2" },
-        { "command": "sessionTree.showWorkspace", "when": "view == sessionTree.explorer && config.sessionTree.scope == all", "group": "navigation@2" },
-        { "command": "sessionTree.selectAgent", "when": "view == sessionTree.explorer && sessionTree.multipleAgents", "group": "navigation@3" }
+        { "command": "sessionTree.backToList", "when": "view == sessionTree.explorer && sessionTree.inTree", "group": "navigation@0" },
+        { "command": "sessionTree.selectAgent", "when": "view == sessionTree.explorer && sessionTree.multipleAgents && !sessionTree.inTree", "group": "navigation@3" }
       ],
-      "view/item/context": [{ "command": "sessionTree.copyId", "when": "view == sessionTree.explorer && viewItem == sessionTree.session", "group": "inline" }],
-      "commandPalette": [{ "command": "sessionTree.copyId", "when": "false" }]
+      "webview/context": [{ "command": "sessionTree.copyId", "when": "webviewId == 'sessionTree.explorer' && webviewSection == 'session-tree-node'", "group": "clipboard" }],
+      "commandPalette": [{ "command": "sessionTree.copyId", "when": "false" }, { "command": "sessionTree.openTree", "when": "false" },
+        { "command": "sessionTree.openConversation", "when": "false" },
+        { "command": "sessionTree.backToList", "when": "sessionTree.inTree" }]
     },
     "configuration": {
       "title": "SessionTree",
       "properties": {
         "sessionTree.agent": { "type": "string", "enum": ["codex"], "default": "codex", "description": "%setting.agent%" },
-        "sessionTree.scope": { "type": "string", "enum": ["workspace", "all"], "default": "workspace", "description": "%setting.scope%" },
         "sessionTree.codexHome": { "type": "string", "default": "", "scope": "machine", "description": "%setting.codexHome%" }
       }
     }
@@ -52,7 +55,8 @@
     "build": "node scripts/build.mjs",
     "test": "npm run build && node --test test/*.test.cjs",
     "package": "node scripts/package.mjs",
-    "preview": "node scripts/preview.mjs"
+    "preview": "node scripts/preview.mjs",
+    "preview:graph": "node scripts/preview-graph.mjs"
   },
   "devDependencies": {
     "@types/node": "22.10.0",

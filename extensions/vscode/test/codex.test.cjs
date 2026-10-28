@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { mkdir, mkdtemp, writeFile, readFile, rm } = require('node:fs/promises');
+const { mkdir, mkdtemp, writeFile, appendFile, readFile, rm } = require('node:fs/promises');
 const { join, resolve, relative } = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
 const { CodexProvider } = require('../out/agents/codex');
@@ -31,12 +31,21 @@ test('the bundled Rust reader returns fork metadata and notices SQLite commits w
     assert.ok(child && !child.startsWith('..') && !child.includes('/'));
     await rm(directory, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
   });
+  assert.deepEqual(await provider.firstReply(ids[0]), { status: 'unavailable' });
   const first = await provider.read(true);
   assert.equal(first.nodes.length, 2);
   assert.equal(first.nodes.find(node => node.nativeId === ids[1]).parentId, 'codex:' + ids[0]);
   assert.equal(first.nodes.find(node => node.nativeId === ids[1]).archived, true);
   assert.equal(first.nodes.find(node => node.nativeId === ids[0]).updatedAt, new Date(2000 * 1000).toISOString());
   assert.equal((await provider.read(false, first.revision)).nodes, undefined);
+  assert.deepEqual(await provider.firstReply(ids[0]), { status: 'empty', user: 'SYNTHETIC_BODY_NOT_NEEDED_FOR_EXPLORER' });
+  await appendFile(join(home, 'sessions', 'rollout-' + ids[0] + '.jsonl'), [
+    { type: 'response_item', payload: { type: 'message', role: 'assistant', channel: 'analysis', content: [{ type: 'output_text', text: 'reasoning must stay hidden' }] } },
+    { type: 'event_msg', payload: { type: 'agent_message', message: 'First Codex reply\n\nPreserve paragraphs.' } },
+    { type: 'event_msg', payload: { type: 'agent_message', message: 'Latest reply must not replace the first.' } },
+  ].map(item => JSON.stringify(item)).join('\n') + '\n');
+  assert.deepEqual(await provider.firstReply(ids[0]), { status: 'available', text: 'First Codex reply Preserve paragraphs.', user: 'SYNTHETIC_BODY_NOT_NEEDED_FOR_EXPLORER' });
+  await assert.rejects(provider.firstReply('00000000-0000-4000-8000-000000000099'), /Read the conversation index/);
   await add(3, ids[1]);
   const changed = await provider.read(false, first.revision);
   assert.equal(changed.nodes.length, 3);
@@ -48,6 +57,7 @@ test('the bundled Rust reader returns fork metadata and notices SQLite commits w
   assert.equal(activity.nodes.find(node => node.nativeId === ids[0]).updatedAt, new Date(9000 * 1000).toISOString());
   assert.equal((await provider.read(false, activity.revision)).nodes, undefined);
   provider.dispose();
+  assert.deepEqual(await provider.firstReply(ids[0]), { status: 'unavailable' });
   db.prepare('UPDATE threads SET updated_at=10000 WHERE id=?').run(ids[0]);
   const reopened = new CodexProvider({ binary: join(__dirname, '../bin/session-tree' + (process.platform === 'win32' ? '.exe' : '')),
     home, data: join(directory, 'index') });

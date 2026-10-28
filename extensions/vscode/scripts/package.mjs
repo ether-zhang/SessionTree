@@ -4,9 +4,12 @@ import { join } from 'node:path';
 import { build, extension, root, platforms, prepareBinary, run } from './build.mjs';
 import { zipEntries } from '../../../scripts/lib/archive.mjs';
 import { createHash, randomUUID } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 
 await build();
 const manifest = JSON.parse(await readFile(join(extension, 'package.json'), 'utf8'));
+const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8', windowsHide: true }).trim();
+assert.match(revision, /^[0-9a-f]{40,64}$/);
 const vscePackage = JSON.parse(await readFile(join(extension, 'node_modules/@vscode/vsce/package.json'), 'utf8'));
 const vsce = join(extension, 'node_modules/@vscode/vsce', typeof vscePackage.bin === 'string' ? vscePackage.bin : vscePackage.bin.vsce);
 const output = join(root, 'dist/vscode');
@@ -14,17 +17,21 @@ await mkdir(output, { recursive: true });
 for (const platform of platforms.filter(target => target.id === process.platform + '-' + process.arch)) {
   const stage = join(root, '.session-tree/vscode-package', platform.id + '-' + randomUUID().slice(0, 8));
   await mkdir(stage, { recursive: true });
-  for (const file of ['out', 'assets', 'l10n']) await cp(join(extension, file), join(stage, file), { recursive: true });
-  for (const file of ['README.md', 'LICENSE', 'package.nls.json', 'package.nls.zh-cn.json', 'package.nls.zh-tw.json']) {
+  for (const file of ['out', 'assets', 'l10n', 'media', 'images']) await cp(join(extension, file), join(stage, file), { recursive: true });
+  for (const file of ['README.md', 'DEVELOPMENT.md', 'LICENSE', 'package.nls.json', 'package.nls.zh-cn.json', 'package.nls.zh-tw.json']) {
     await copyFile(join(extension, file), join(stage, file));
   }
   const packaged = { ...manifest };
   delete packaged.scripts; delete packaged.devDependencies;
-  packaged.files = ['out/**', 'assets/**', 'bin/**', 'l10n/**', 'package.nls*.json', 'README.md', 'LICENSE', 'THIRD_PARTY_NOTICES.txt'];
+  packaged.files = ['out/**', 'assets/**', 'bin/**', 'l10n/**', 'media/**', 'images/**', 'package.nls*.json', 'README.md', 'DEVELOPMENT.md', 'LICENSE', 'THIRD_PARTY_NOTICES.txt'];
   await writeFile(join(stage, 'package.json'), JSON.stringify(packaged, null, 2) + '\n');
   await prepareBinary(platform, stage);
   const archive = join(output, `session-tree-${manifest.version}-${platform.id}.vsix`);
-  run(process.execPath, [vsce, 'package', '--no-dependencies', '--target', platform.id, '--out', archive], stage);
+  // vsce does not infer repository.directory when resolving Markdown links.
+  const repository = manifest.repository.url.replace(/\.git$/, '');
+  run(process.execPath, [vsce, 'package', '--no-dependencies', '--target', platform.id, '--out', archive,
+    '--baseContentUrl', `${repository}/blob/${revision}/${manifest.repository.directory}`,
+    '--baseImagesUrl', `${repository}/raw/${revision}/${manifest.repository.directory}`], stage);
   // A Windows packaging host has no Unix execute bits. Preserve them in the VSIX central directory.
   const bytes = await readFile(archive);
   let end = bytes.length - 22;

@@ -1,4 +1,4 @@
-import { SessionProvider, Snapshot } from './types';
+import { FirstReply, SessionProvider, Snapshot } from './types';
 
 /** Only the host's visibility/focus events may activate this reader. No watchers. */
 export class VisibleReader {
@@ -53,6 +53,15 @@ export class VisibleReader {
         }
       }
     }
+  }
+
+  async firstReply(nativeId: string): Promise<FirstReply> {
+    if (!this.active || !this.provider?.firstReply) return { status: 'unavailable' };
+    const generation = this.generation;
+    try {
+      const result = await this.provider.firstReply(nativeId);
+      return this.active && generation === this.generation ? result : { status: 'unavailable' };
+    } catch { return { status: 'unavailable' }; }
   }
 
   private stop(): void {

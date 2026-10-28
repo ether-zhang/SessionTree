@@ -1,10 +1,11 @@
 import { stat } from 'node:fs/promises';
 import { BackendClient } from '../backend';
-import { SessionProvider, Snapshot, SessionNode } from '../types';
+import { FirstReply, SessionProvider, Snapshot, SessionNode } from '../types';
 
 export class CodexProvider implements SessionProvider {
   private client?: BackendClient;
   private disposed = false;
+  private initialization?: Promise<void>;
 
   constructor(private readonly options: { binary: string; home: string; data: string }) {}
 
@@ -17,9 +18,11 @@ export class CodexProvider implements SessionProvider {
     if (this.disposed) throw new Error('The session reader is closed.');
     if (!this.client) {
       this.client = new BackendClient(this.options.binary, this.options.home, this.options.data);
-      try { await this.client.initialize(); }
-      catch (error) { this.dispose(); throw error; }
+      this.initialization = this.client.initialize();
     }
+    try { await this.initialization; }
+    catch (error) { this.dispose(); throw error; }
+    if (this.disposed || !this.client) throw new Error('The session reader is closed.');
     const result = await this.client.request('tools/call', { name: 'session_tree_panel_data', arguments: {
       open_check: opening, ...(sinceRevision ? { since_revision: sinceRevision } : {}),
     } });
@@ -40,5 +43,17 @@ export class CodexProvider implements SessionProvider {
     return { revision: panel.revision, nodes };
   }
 
-  dispose(): void { this.disposed = true; this.client?.dispose(); this.client = undefined; }
+  async firstReply(nativeId: string): Promise<FirstReply> {
+    const client = this.client;
+    if (this.disposed || !client) return { status: 'unavailable' };
+    await this.initialization;
+    if (this.disposed || client !== this.client) return { status: 'unavailable' };
+    const result = await client.request('sessionTree/firstReply', { threadId: nativeId });
+    if (!['available', 'empty', 'limited', 'unavailable'].includes(result?.status)
+      || result.user !== undefined && typeof result.user !== 'string'
+      || result.status === 'available' && typeof result.text !== 'string') return { status: 'unavailable' };
+    return result;
+  }
+
+  dispose(): void { this.disposed = true; this.client?.dispose(); this.client = undefined; this.initialization = undefined; }
 }

@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { SessionForest, inWorkspace } = require('../out/tree');
+const { SessionForest, SessionBrowser, inWorkspace } = require('../out/tree');
 const node = (id, workspace, parentId, extra = {}) => ({ id, workspace, parentId, agent: 'fixture', title: id, ...extra });
 
 test('workspace filtering preserves complete families across worktrees, archives and missing ancestors', () => {
@@ -42,4 +42,48 @@ test('latest descendant activity moves the complete family and branch ahead of o
   assert.deepEqual(tree.roots.map(node => node.id), ['a-old', 'z-recent', 'created-only', 'unknown-time']);
   assert.deepEqual(tree.children.get('a-old').map(node => node.id), ['z-child-new', 'a-child-old']);
   assert.equal(tree.parents.get('grandchild'), 'z-child-new');
+});
+
+test('a session-scoped tree keeps the complete family and never substitutes another conversation', () => {
+  const records = [node('root', '/old-workspace'), node('current', '/app', 'root'),
+    node('archived-sibling', '/worktree', 'root', { archived: true }),
+    node('descendant', '/worktree', 'current'), node('unrelated-newest', '/app')];
+  const tree = SessionForest.forSession(records, 'current');
+  assert.equal(tree.selectedId, 'current');
+  assert.deepEqual([...tree.nodes.keys()], ['root', 'current', 'archived-sibling', 'descendant']);
+  assert.deepEqual(tree.roots.map(node => node.id), ['root']);
+  assert.equal(SessionForest.forSession(records, 'not-in-index').nodes.size, 0);
+  assert.equal(SessionForest.forSession(records).nodes.size, 0);
+});
+
+test('the initial list opens a clicked conversation family and Back restores the complete recent list', () => {
+  const session = (id, parentId, day, extra = {}) => node(id, '/app', parentId, {
+    nativeId: id, updatedAt: `2026-10-${String(day).padStart(2, '0')}T00:00:00Z`, ...extra,
+  });
+  const records = [session('root', null, 1), session('child', 'root', 20),
+    session('archived', 'root', 2, { archived: true }), session('unrelated', null, 27),
+    session('worker', 'child', 28, { subagent: true })];
+  const browser = new SessionBrowser();
+  browser.replace(records);
+  assert.equal(browser.inTree, false);
+  assert.deepEqual(browser.children().map(node => node.id), ['unrelated', 'child', 'archived', 'root']);
+  assert.deepEqual(browser.children(records[0]), []);
+  assert.equal(browser.openTree('archived'), false);
+  assert.equal(browser.openTree('unknown'), false);
+  assert.equal(browser.inTree, false);
+  assert.equal(browser.openTree('child'), true);
+  assert.equal(browser.selectedId, 'child');
+  assert.deepEqual(browser.children().map(node => node.id), ['root']);
+  assert.deepEqual([...browser.forest.nodes.keys()], ['root', 'child', 'archived']);
+  browser.replace([...records, session('new-branch', 'root', 28)]);
+  assert.equal(browser.selectedId, 'child');
+  assert.equal(browser.forest.nodes.has('new-branch'), true);
+  assert.equal(browser.forest.nodes.has('unrelated'), false);
+  browser.backToList();
+  assert.equal(browser.inTree, false);
+  assert.deepEqual(browser.children().map(node => node.id), ['new-branch', 'unrelated', 'child', 'archived', 'root']);
+  browser.openTree('child');
+  browser.replace([session('unrelated', null, 27)]);
+  assert.equal(browser.inTree, true);
+  assert.deepEqual(browser.children(), []);
 });

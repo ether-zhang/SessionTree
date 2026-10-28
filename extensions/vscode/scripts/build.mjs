@@ -49,6 +49,8 @@ export async function prepareBinary(platform, destination = extension) {
 export async function build() {
   run('cargo', ['build', '--release', '--locked', '-p', 'session-tree'], root);
   run(process.execPath, [join(extension, 'node_modules/typescript/bin/tsc'), '--project', extension]);
+  run(process.execPath, [join(root, 'node_modules/typescript/bin/tsc'), '--project', root, '--noEmit']);
+  run(process.execPath, [join(extension, 'scripts/build-webview.mjs')]);
   await mkdir(join(extension, 'assets'), { recursive: true });
   await copyFile(join(root, 'plugins/session-tree/assets/session-tree.png'), join(extension, 'assets/session-tree.png'));
   await copyFile(join(root, 'LICENSE'), join(extension, 'LICENSE'));

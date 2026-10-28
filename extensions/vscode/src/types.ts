@@ -20,11 +20,34 @@ export interface Snapshot {
 
 export interface SessionProvider {
   read(opening: boolean, sinceRevision?: string): Promise<Snapshot>;
+  firstReply?(nativeId: string): Promise<FirstReply>;
   dispose(): void;
+}
+
+export interface FirstReply {
+  status: 'available' | 'empty' | 'limited' | 'unavailable';
+  text?: string;
+  user?: string;
 }
 
 export interface Agent {
   id: string;
   label: string;
   create(): SessionProvider;
+  open?(node: SessionNode): Promise<boolean>;
+}
+
+export interface GraphSnapshot {
+  type: 'snapshot';
+  selectedId: string | null;
+  nodes: SessionNode[];
+  locale: string;
+  agentLabel: string;
+  message?: string;
+  labels: {
+    title: string; listTitle: string; zoomIn: string; zoomOut: string; fit: string; locate: string;
+    selected: string; archived: string; missing: string; origin: string; updated: string;
+    firstReply: string; loadingReply: string; emptyReply: string; limitedReply: string; unavailableReply: string;
+    user: string; emptyUser: string;
+  };
 }

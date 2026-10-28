@@ -1,11 +1,11 @@
 {
   "extension.description": "Conversation forks in the Explorer. Codex first; other agents can follow.",
   "command.refresh": "Refresh Sessions",
-  "command.showAll": "Show All Local Sessions",
-  "command.showWorkspace": "Show Workspace Sessions",
+  "command.openTree": "View Conversation Tree",
+  "command.openConversation": "Open Conversation in Agent",
+  "command.backToList": "Back to Conversation List",
   "command.selectAgent": "Select Agent",
   "command.copyId": "Copy Session ID",
   "setting.agent": "Agent whose conversations appear in SessionTree. This preview supports Codex.",
-  "setting.scope": "Show complete conversation families related to the open workspace, or all local families.",
   "setting.codexHome": "Codex data folder. Leave empty to use CODEX_HOME or ~/.codex on the extension's host. This is a local data path, not an API setting."
 }
