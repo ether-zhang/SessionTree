@@ -7,6 +7,7 @@ import { isAbsolute, join, relative, resolve, sep, dirname, basename } from 'nod
 import { fileURLToPath } from 'node:url';
 import { zipDirectory, zipEntries } from './lib/archive.mjs';
 import { hostTarget } from './lib/platform.mjs';
+import { nativeNotices } from './lib/notices.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url)), dist = join(root, 'dist');
 const source = join(root, 'plugins/session-tree');
@@ -47,20 +48,6 @@ async function fingerprints(directory) {
   }
   await visit(directory); return result;
 }
-async function notices() {
-  const metadata = JSON.parse(run('cargo', ['metadata', '--format-version=1', '--locked']));
-  const sections = ['# Third-party components\n\nSessionTree links SQLite and Zstandard into its Rust executable. SQLite is in the public domain: https://sqlite.org/copyright.html. Other linked crate notices follow. Embedded frontend notices are in assets/frontend-licenses.txt.'];
-  for (const pkg of metadata.packages.filter(pkg => !metadata.workspace_members.includes(pkg.id)).sort((a, b) => a.name.localeCompare(b.name))) {
-    const path = dirname(pkg.manifest_path);
-    const files = (await readdir(path)).filter(file => /^(?:LICEN[CS]E|COPYING|NOTICE)(?:[._-]|$)/i.test(file));
-    if (pkg.name === 'zstd-sys' && await exists(join(path, 'zstd/LICENSE'))) files.push('zstd/LICENSE');
-    const contents = [];
-    for (const file of files) if ((await lstat(join(path, file))).isFile()) contents.push(file + '\n\n' + await readFile(join(path, file), 'utf8'));
-    sections.push('## ' + pkg.name + ' ' + pkg.version + '\n\nLicense: ' + pkg.license + '\n' +
-      (pkg.repository || 'https://crates.io/crates/' + pkg.name) + '\n\n' + contents.join('\n\n'));
-  }
-  return sections.join('\n\n---\n\n') + '\n';
-}
 async function main() {
   assert.ok(process.argv.slice(2).every(arg => arg === '--replace'));
   const paths = [output, pluginZip, pluginZip + '.sha256', marketZip, marketZip + '.sha256', output + '.metadata.json', output + '.verification.json'];
@@ -84,7 +71,7 @@ async function main() {
   mcp.mcpServers['session-tree'].command = './bin/' + target.binary;
   mcp.mcpServers['session-tree'].args = [];
   await json(join(plugin, 'mcp.json'), mcp);
-  await writeFile(join(plugin, 'THIRD_PARTY_NOTICES.txt'), await notices());
+  await writeFile(join(plugin, 'THIRD_PARTY_NOTICES.txt'), await nativeNotices(root));
   const market = { name: 'session-tree', interface: { displayName: 'SessionTree (' + target.label + ')' }, plugins: [{
     name: manifest.name, source: { source: 'local', path: './plugins/session-tree' },
     policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' }, category: 'Productivity',

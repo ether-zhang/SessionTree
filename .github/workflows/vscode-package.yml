@@ -1,0 +1,62 @@
+name: VS Code packages
+
+on:
+  push:
+    branches: [codex/vscode-explorer]
+    paths:
+      - .github/workflows/vscode-package.yml
+      - extensions/vscode/**
+      - frontend/vscode/**
+      - plugins/session-tree/src/core/layout.mjs
+      - plugins/session-tree/assets/session-tree.png
+      - crates/**
+      - scripts/lib/**
+      - Cargo.*
+      - package*.json
+      - tsconfig.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            target: win32-x64
+          - runner: macos-15
+            target: darwin-arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    env:
+      MACOSX_DEPLOYMENT_TARGET: '11.0'
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24.22.0
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            extensions/vscode/package-lock.json
+      - name: Check native build host
+        run: node -e "require('node:assert/strict').equal(process.platform + '-' + process.arch, '${{ matrix.target }}')"
+      - run: rustup toolchain install 1.96.0 --profile minimal
+      - run: rustup override set 1.96.0
+      - run: npm ci
+      - run: npm ci --prefix extensions/vscode
+      - run: npm run package:vscode
+      - name: Check local reader with synthetic sessions
+        run: node --test extensions/vscode/test/codex.test.cjs
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: session-tree-vscode-${{ matrix.target }}
+          path: |
+            dist/vscode/*.vsix
+            dist/vscode/*.vsix.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14

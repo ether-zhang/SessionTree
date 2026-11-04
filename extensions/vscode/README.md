@@ -6,7 +6,7 @@ Explore your Codex conversation forks as a tree, right inside **Explorer**. Prev
 
 ## Get started
 
-Install your platform's VSIX through **Extensions → ⋯ → Install from VSIX…**. No separate runtime installation is needed.
+Choose the **Windows x64** or **Apple Silicon Mac** VSIX and install it through **Extensions → ⋯ → Install from VSIX…**. No separate runtime installation is needed.
 
 1. Expand **SessionTree** in Explorer.
 2. Choose a conversation to see its tree.

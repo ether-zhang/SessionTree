@@ -2,7 +2,7 @@
   "name": "session-tree",
   "displayName": "SessionTree",
   "description": "%extension.description%",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "publisher": "ether-zhang",
   "license": "MIT",
   "repository": { "type": "git", "url": "https://github.com/ether-zhang/SessionTree.git", "directory": "extensions/vscode" },

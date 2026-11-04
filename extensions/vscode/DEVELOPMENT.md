@@ -14,9 +14,9 @@ npm --prefix extensions/vscode test
 npm run package:vscode
 ```
 
-The build needs Rust, Cargo, a C toolchain and the Node development dependencies. It compiles the Rust reader for the current host and bundles the React/TypeScript canvas with Vite. Previously verified artifacts under `dist/session-tree-0.7.1-preview-3edd5fd/` supply the unchanged Rust third-party license inventory; frontend licenses are bundled with the canvas. The packaging script creates a VSIX for the current host under `dist/vscode/`. Build tools and `node_modules` are excluded.
+The build needs Rust, Cargo, a C toolchain and the Node development dependencies. It compiles the Rust reader for the current host, collects license notices from the locked Rust sources, and bundles the React/TypeScript canvas with Vite. The packaging script creates a VSIX and SHA-256 checksum for the current host under `dist/vscode/`. Build tools and `node_modules` are excluded; no previous release artifacts are needed.
 
-Platform targets are `win32-x64`, `darwin-arm64` (Apple Silicon) and `darwin-x64` (Intel Mac). Build on each target platform. The current Windows preview has user acceptance; native VS Code UI acceptance on Mac is pending. Linux, browser-hosted VS Code, and virtual workspaces are not packaged in this preview.
+Platform targets are `win32-x64` and `darwin-arm64` (Apple Silicon). Build on each target platform. The VS Code package workflow builds both targets from the same commit, exercises the reader with synthetic sessions, and saves the VSIX files and checksums as workflow artifacts. The Windows preview has user acceptance; native VS Code UI and navigation acceptance on Mac remain pending. Intel Mac, Linux, browser-hosted VS Code, and virtual workspaces are not packaged in this preview.
 
 ## Preview
 

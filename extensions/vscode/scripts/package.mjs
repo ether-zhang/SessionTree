@@ -18,7 +18,7 @@ for (const platform of platforms.filter(target => target.id === process.platform
   const stage = join(root, '.session-tree/vscode-package', platform.id + '-' + randomUUID().slice(0, 8));
   await mkdir(stage, { recursive: true });
   for (const file of ['out', 'assets', 'l10n', 'media', 'images']) await cp(join(extension, file), join(stage, file), { recursive: true });
-  for (const file of ['README.md', 'DEVELOPMENT.md', 'LICENSE', 'package.nls.json', 'package.nls.zh-cn.json', 'package.nls.zh-tw.json']) {
+  for (const file of ['README.md', 'DEVELOPMENT.md', 'LICENSE', 'THIRD_PARTY_NOTICES.txt', 'package.nls.json', 'package.nls.zh-cn.json', 'package.nls.zh-tw.json']) {
     await copyFile(join(extension, file), join(stage, file));
   }
   const packaged = { ...manifest };
