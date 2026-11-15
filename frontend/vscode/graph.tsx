@@ -6,6 +6,7 @@ import type { Camera } from '../../extensions/vscode/src/graph-layout';
 import type { FirstReply, GraphSnapshot } from '../../extensions/vscode/src/types';
 import { boxTree, edgePath } from './layout';
 import { SessionList } from './list';
+import { ScrollText } from './scroll-text';
 import type { ListState } from './list';
 import './graph.css';
 
@@ -15,18 +16,19 @@ const host = acquireVsCodeApi();
 
 function Graph() {
   const [snapshot, setSnapshot] = useState<GraphSnapshot | null>(null);
+  const [active, setActive] = useState(false);
   const [camera, setCamera] = useState<Camera>({ x: 12, y: 36, scale: 1 });
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [hovered, setHovered] = useState<string | null>(null), [focused, setFocused] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [popup, setPopup] = useState<{ id: string; reply?: FirstReply } | null>(null);
   const popupElement = useRef<HTMLDivElement>(null);
-  const [popupHeight, setPopupHeight] = useState(64);
+  const [popupHeight, setPopupHeight] = useState(84);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const previewCache = useRef(new Map<string, { stamp: string; reply: FirstReply; at: number }>());
   const requests = useRef(new Map<string, { requestId: number; stamp: string; treeId: string }>());
-  const nextRequest = useRef(0), currentSnapshot = useRef(snapshot), currentHovered = useRef(hovered);
-  currentSnapshot.current = snapshot; currentHovered.current = hovered;
+  const nextRequest = useRef(0), currentSnapshot = useRef(snapshot), currentHovered = useRef(hovered), currentActive = useRef(active);
+  currentSnapshot.current = snapshot; currentHovered.current = hovered; currentActive.current = active;
   const shell = useRef<HTMLElement>(null), viewport = useRef<SVGSVGElement>(null), currentCamera = useRef(camera);
   currentCamera.current = camera;
   const initialState = useRef(host.getState()), selected = useRef<string | null | undefined>(undefined);
@@ -39,7 +41,11 @@ function Graph() {
   useEffect(() => {
     const receive = (event: MessageEvent) => {
       const data = event.data;
-      if (data?.type === 'snapshot' && Array.isArray(data.nodes) && data.labels) setSnapshot(data);
+      if (data?.type === 'activity') {
+        currentActive.current = data.active === true && !document.hidden;
+        setActive(currentActive.current);
+      }
+      else if (data?.type === 'snapshot' && Array.isArray(data.nodes) && data.labels) setSnapshot(data);
       else if (data?.type === 'firstReply' && data.treeId === currentSnapshot.current?.selectedId) {
         const pending = requests.current.get(data.nodeId);
         if (!pending || pending.requestId !== data.requestId || pending.treeId !== data.treeId) return;
@@ -51,11 +57,14 @@ function Graph() {
           if (oldest !== undefined) previewCache.current.delete(oldest);
         }
         previewCache.current.set(data.nodeId, { stamp: pending.stamp, reply, at: Date.now() });
-        if (currentHovered.current === data.nodeId) setPopup({ id: data.nodeId, reply });
+        if (currentActive.current && currentHovered.current === data.nodeId) setPopup({ id: data.nodeId, reply });
       }
     };
     window.addEventListener('message', receive);
-    const visible = () => { if (!document.hidden) host.postMessage({ type: 'ready' }); };
+    const visible = () => {
+      if (document.hidden) { currentActive.current = false; setActive(false); }
+      else host.postMessage({ type: 'ready' });
+    };
     document.addEventListener('visibilitychange', visible);
     host.postMessage({ type: 'ready' });
     return () => { clearTimeout(closeTimer.current); window.removeEventListener('message', receive); document.removeEventListener('visibilitychange', visible); };
@@ -112,7 +121,7 @@ function Graph() {
 
   const hoverStamp = byId.get(hovered ?? '')?.node.updatedAt ?? byId.get(hovered ?? '')?.node.createdAt ?? '';
   useEffect(() => {
-    if (!hovered || !snapshot?.selectedId || dragging || !byId.has(hovered)) { setPopup(null); return; }
+    if (!active || !hovered || !snapshot?.selectedId || dragging || !byId.has(hovered)) { setPopup(null); return; }
     const treeId = snapshot.selectedId;
     const timer = setTimeout(() => {
       const node = byId.get(hovered)?.node;
@@ -128,7 +137,7 @@ function Graph() {
       host.postMessage({ type: 'preview', treeId, nodeId: hovered, requestId });
     }, 220);
     return () => clearTimeout(timer);
-  }, [hovered, hoverStamp, snapshot?.selectedId, dragging, byId]);
+  }, [active, hovered, hoverStamp, snapshot?.selectedId, dragging, byId]);
 
   useLayoutEffect(() => {
     const height = popupElement.current?.getBoundingClientRect().height;
@@ -186,8 +195,8 @@ function Graph() {
   const popupWidth = Math.max(80, Math.min(300, size.width - 16));
   const popupX = popupNode ? Math.max(8, Math.min(size.width - popupWidth - 8, camera.x + (popupNode.x + popupNode.width / 2) * camera.scale - popupWidth / 2)) : 8;
   const below = popupNode ? camera.y + (popupNode.y + popupNode.height) * camera.scale + 8 : 8;
-  const popupMaxHeight = popupNode ? Math.max(48, Math.min(80, size.height - 16,
-    Math.max(camera.y + popupNode.y * camera.scale - 16, size.height - below - 8))) : 80;
+  const popupMaxHeight = popupNode ? Math.max(48, Math.min(240, size.height - 16,
+    Math.max(camera.y + popupNode.y * camera.scale - 16, size.height - below - 8))) : 240;
   const popupY = Math.max(8, Math.min(size.height - popupHeight - 8, below + popupHeight <= size.height - 8 ? below
     : popupNode ? camera.y + popupNode.y * camera.scale - popupHeight - 8 : 8));
   return <main ref={shell} className="graph-shell">
@@ -213,6 +222,8 @@ function Graph() {
         {visibleEdges.map(edge => <path key={edge.from + ':' + edge.to} d={edgePath(edge)} className="tree-edge" markerEnd="url(#arrow)"/>) }
         {visibleNodes.map(item => {
           const node = item.node, anchor = node.id === snapshot?.selectedId;
+          const onScreen = camera.x + (item.x + item.width) * camera.scale > 0 && camera.x + item.x * camera.scale < size.width
+            && camera.y + (item.y + item.height) * camera.scale > 0 && camera.y + item.y * camera.scale < size.height;
           return <g key={node.id} data-node-id={node.id} className={'graph-node' + (anchor ? ' anchor' : '')
             + (node.id === hovered || node.id === focused ? ' focused' : '') + (node.archived || node.missing ? ' muted' : '')}
             tabIndex={node.archived || node.missing ? -1 : 0} role="treeitem" aria-label={node.title} aria-current={anchor ? 'true' : undefined}
@@ -226,7 +237,8 @@ function Graph() {
             <foreignObject x={item.x + 8} y={item.y + 5} width={item.width - 16} height={22}>
               <div className="node-caption">
                 {node.archived && <svg className="archive-icon" viewBox="0 0 16 16" aria-label={labels?.archived}><path d="M2 2h12v3H2zM3 5v9h10V5M6 8h4"/></svg>}
-                <span className="node-title">{node.missing ? labels?.missing : node.title}</span>
+                <ScrollText className="node-title" text={node.missing ? labels!.missing : node.title}
+                  active={active && onScreen && !dragging}/>
               </div>
             </foreignObject>
           </g>;
@@ -236,8 +248,11 @@ function Graph() {
     {popup && popupNode && labels && <div ref={popupElement} className="reply-preview" role="tooltip" aria-label={popupNode.node.title} aria-busy={!popup.reply}
       style={{ left: popupX, top: popupY, width: popupWidth, maxHeight: popupMaxHeight }}
       onPointerEnter={() => clearTimeout(closeTimer.current)} onPointerLeave={() => setHovered(null)}>
+      <ScrollText className="reply-session-title" text={popupNode.node.missing ? labels.missing : popupNode.node.title}
+        active={active && !dragging}/>
       <div className="reply-row"><span className="reply-speaker">{labels.user}：</span>
-        <span className={'reply-text' + (popup.reply?.user ? '' : ' reply-status')}>{popup.reply?.user || (!popup.reply ? '…' : labels.emptyUser)}</span></div>
+        <span className={'reply-text' + (popup.reply?.user ? '' : ' reply-status')}>
+          {popup.reply?.user || (!popup.reply ? '…' : labels.emptyUser)}</span></div>
       <div className="reply-row"><span className="reply-speaker">{snapshot?.agentLabel}：</span>
         <span className={'reply-text' + (popup.reply?.status === 'available' ? '' : ' reply-status')}>
           {!popup.reply ? labels.loadingReply : popup.reply.status === 'available' ? popup.reply.text

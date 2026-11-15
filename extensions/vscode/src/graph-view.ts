@@ -6,6 +6,7 @@ import { FirstReply, GraphSnapshot } from './types';
 export class GraphView implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
   private ready = false;
+  private active = false;
   private snapshot?: GraphSnapshot;
   private signature = '';
   private listeners: vscode.Disposable[] = [];
@@ -49,12 +50,21 @@ export class GraphView implements vscode.WebviewViewProvider {
     this.signature = signature; this.snapshot = snapshot; this.send();
   }
 
+  setActive(active: boolean): void {
+    if (active === this.active) return;
+    this.active = active;
+    if (this.ready && this.visible) void this.view!.webview.postMessage({ type: 'activity', active });
+  }
+
   private send(): void {
     if (!this.view || !this.snapshot) return;
     this.view.description = this.snapshot.selectedId ? vscode.l10n.t('Conversation tree') : this.snapshot.agentLabel;
     const count = this.snapshot.nodes.filter(node => !node.missing).length;
     this.view.badge = count ? { value: count, tooltip: vscode.l10n.t('{0} sessions', count) } : undefined;
-    if (this.ready && this.view.visible) void this.view.webview.postMessage(this.snapshot);
+    if (this.ready && this.view.visible) {
+      void this.view.webview.postMessage({ type: 'activity', active: this.active });
+      void this.view.webview.postMessage(this.snapshot);
+    }
   }
 
   private async preview(message: { nodeId?: unknown; treeId?: unknown; requestId?: unknown }): Promise<void> {

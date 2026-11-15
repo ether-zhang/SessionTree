@@ -30,6 +30,10 @@ Both levels share one Explorer view, preserving its height, width and position. 
 
 The second level uses a React/SVG canvas with fixed 120 × 32 title boxes. The common tree layout keeps branches stable across activity-time updates. Only visible list rows, boxes and edges are rendered. Arrow keys pan, `+`/`-` zoom, `0` fits, and `Home` locates the selected conversation. Right-click a graph node to copy its ID.
 
+Visible node titles scroll automatically when overflowing while the view is in the foreground. The hover preview's title also stays on one line and scrolls when needed; its two speaker excerpts remain static summaries with ellipses. Offscreen nodes do not animate. Dragging, hiding the view or backgrounding the window cancels the animations and disconnects their size observers. Closing the preview stops its title animation. Reduced-motion preferences disable automatic scrolling.
+
+Titles move forward, pause briefly at the end, then jump back to the beginning for the next cycle. Active text remains measurable even while it fits, so a root title that later overflows after a font or layout change can start scrolling without another interaction. The standalone preview supports `?tree=root`, a root-width toggle to exercise this regression, and `?tree=root&long-root=1` for an initially long root title.
+
 Clicking an available tree node opens `<editor URI scheme>://openai.chatgpt/local/<thread ID>` through VS Code's `env.openExternal` API. The route has a [public Windows verification record](https://github.com/AndrewAvery7/claude-codex-bridge/blob/main/docs/TESTING.md), but is not a documented stable Codex extension API. The user accepted the current Windows preview after testing. Mac navigation remains unverified. VS Code controls which window receives a URI when several windows are open. SessionTree does not modify Codex or fall back to another app; the target Codex extension must be installed, enabled and use the same data profile.
 
 ## Data and performance

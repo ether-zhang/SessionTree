@@ -48,7 +48,11 @@ export function activate(context: vscode.ExtensionContext): void {
         unavailableReply: vscode.l10n.t('First reply is temporarily unavailable.') } });
   };
   const visible = () => !disposed && vscode.window.state.focused && graph.visible;
-  const synchronizeVisibility = () => reader?.setActive(visible());
+  const synchronizeVisibility = () => {
+    const active = visible();
+    reader?.setActive(active);
+    graph.setActive(active);
+  };
   const configure = () => {
     reader?.dispose();
     loaded = false;
@@ -68,7 +72,7 @@ export function activate(context: vscode.ExtensionContext): void {
       readError = vscode.l10n.t('Unable to read sessions. Refresh to retry, or check the Codex data folder in settings.');
       rebuild();
     } });
-    reader.setActive(visible());
+    synchronizeVisibility();
   };
   const navigate = async () => {
     rebuild();
